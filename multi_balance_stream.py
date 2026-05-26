@@ -528,10 +528,11 @@ class BalanceTab(ctk.CTkFrame):
         if ports and not self.combo_com.get():
             self.combo_com.set(ports[0])
 
-    def connect_serial(self):
+    def connect_serial(self, auto=False):
         port = self.combo_com.get()
         if not port or port == "No Ports Found" or port == "":
-            messagebox.showerror("Error", "Please select a valid COM Port before connecting.")
+            if not auto:
+                messagebox.showerror("Error", "Please select a valid COM Port before connecting.")
             return
             
         if self.ser and self.ser.is_open:
@@ -554,11 +555,13 @@ class BalanceTab(ctk.CTkFrame):
                 
         except Exception as e:
             self.lbl_status.configure(text="Status: Connection Failed", text_color="#e74c3c")
-            messagebox.showerror("Error", f"Could not connect to {port}:\n{e}")
+            if not auto:
+                messagebox.showerror("Error", f"Could not connect to {port}:\n{e}")
 
     def disconnect_serial(self):
         if self.ser and self.ser.is_open:
             self.ser.close()
+        self.ser = None
         self.lbl_status.configure(text="Status: Disconnected", text_color="gray")
         self.btn_connect.configure(text="Connect", fg_color="#3498db", hover_color="#2980b9")
         print(f"[{self.tab_name}] Disconnected.")
@@ -1273,7 +1276,7 @@ class MultiBalanceApp:
                 tab = self.add_tab(name=name, brand=details["brand"], port=details["port"])
                 
                 # Allow UI to build before connecting
-                self.root.after(500, tab.connect_serial)
+                self.root.after(500, lambda t=tab: t.connect_serial(auto=True))
                 has_known = True
                 
         if not has_known:
