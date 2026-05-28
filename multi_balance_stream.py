@@ -366,15 +366,11 @@ class BalanceTab(ctk.CTkFrame):
         self.btn_close_tab.pack(fill="x", padx=10, pady=(5, 10))
         
         # --- MIDDLE PANEL: Views ---
-        self.view_var = ctk.StringVar(value="Combined")
-        self.view_seg = ctk.CTkSegmentedButton(self.frame_mid, values=["Graph Only", "Table Only", "Combined"], variable=self.view_var, command=self.toggle_view)
-        self.view_seg.pack(pady=(10, 5))
-        
-        self.views_container = ctk.CTkFrame(self.frame_mid, fg_color="transparent")
-        self.views_container.pack(fill="both", expand=True)
+        self.paned_window = tk.PanedWindow(self.frame_mid, orient=tk.VERTICAL, bg="#2b2b2b", sashwidth=6, sashrelief=tk.RAISED)
+        self.paned_window.pack(fill="both", expand=True, padx=5, pady=5)
         
         # Plot Frame
-        self.plot_frame = ctk.CTkFrame(self.views_container, fg_color="transparent")
+        self.plot_frame = ctk.CTkFrame(self.paned_window, fg_color="transparent")
         
         # Dark mode styling for matplotlib
         plt.style.use('dark_background')
@@ -403,7 +399,7 @@ class BalanceTab(ctk.CTkFrame):
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
         
         # Table Frame (Tkinter Treeview with custom dark style)
-        self.table_frame = ctk.CTkFrame(self.views_container, fg_color="transparent")
+        self.table_frame = ctk.CTkFrame(self.paned_window, fg_color="transparent")
         
         style = tk.ttk.Style()
         style.theme_use("default")
@@ -430,7 +426,8 @@ class BalanceTab(ctk.CTkFrame):
         scrollbar.pack(side="right", fill="y")
         self.tree.pack(side="left", fill="both", expand=True)
         
-        self.toggle_view(self.view_var.get())
+        self.paned_window.add(self.plot_frame, minsize=100, stretch="always")
+        self.paned_window.add(self.table_frame, minsize=100, stretch="always")
 
     def save_tab_config(self):
         import datetime
@@ -444,22 +441,7 @@ class BalanceTab(ctk.CTkFrame):
         self.app.save_config()
         messagebox.showinfo("Success", f"Tab Configuration Saved:\n\nName: {cfg['name']}\nBrand: {cfg['brand']}\nPort: {cfg['port']}")
 
-    def toggle_view(self, view_name):
-        self.plot_frame.pack_forget()
-        self.table_frame.pack_forget()
-        if hasattr(self, 'paned_window'):
-            self.paned_window.pack_forget()
-        
-        if view_name == "Graph Only":
-            self.plot_frame.pack(fill="both", expand=True)
-        elif view_name == "Table Only":
-            self.table_frame.pack(fill="both", expand=True)
-        elif view_name == "Combined":
-            if not hasattr(self, 'paned_window'):
-                self.paned_window = tk.PanedWindow(self.views_container, orient=tk.VERTICAL, bg="#2b2b2b", sashwidth=6, sashrelief=tk.RAISED)
-            self.paned_window.pack(fill="both", expand=True)
-            self.paned_window.add(self.plot_frame, minsize=150, stretch="always")
-            self.paned_window.add(self.table_frame, minsize=150, stretch="always")
+
 
     # --- Actions ---
     def on_filter_change(self, choice):
