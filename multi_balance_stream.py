@@ -1588,6 +1588,12 @@ class MultiBalanceApp:
         print("Application closed.")
 
 if __name__ == "__main__":
+    import ctypes
+    try:
+        myappid = 'candr.balance_streamer.1.0'
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except Exception: pass
+    
     root = ctk.CTk()
     app = MultiBalanceApp(root)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
