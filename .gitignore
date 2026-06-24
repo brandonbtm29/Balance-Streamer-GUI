@@ -1,0 +1,6 @@
+Data Backups/
+Ignore/
+scratch/
+__pycache__/
+*.pyc
+*.csv
