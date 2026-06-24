@@ -1,0 +1,7 @@
+PyQt6
+pyqtdarktheme
+pyserial
+matplotlib
+openpyxl
+scipy
+pyinstaller
