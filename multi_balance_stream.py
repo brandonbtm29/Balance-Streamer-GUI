@@ -1,4 +1,11 @@
 import sys
+import os
+
+# Ensure the working directory is the location of the script
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if os.getcwd() != script_dir:
+    os.chdir(script_dir)
+
 import serial
 import serial.tools.list_ports
 import time
@@ -7,7 +14,6 @@ import csv
 import datetime
 import threading
 import statistics
-import os
 import json
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
@@ -15,7 +21,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QComboBox, QCheckBox, QTextEdit, QGroupBox, 
                              QMessageBox, QFileDialog, QTabWidget, QDialog, 
                              QGridLayout, QSplitter, QScrollArea, QTableWidget, 
-                             QTableWidgetItem, QAbstractItemView, QHeaderView)
+                             QTableWidgetItem, QAbstractItemView, QHeaderView, QListWidget)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread
 from PyQt6.QtGui import QFont, QColor
 
@@ -124,6 +130,93 @@ class SerialWorker(QThread):
             except: pass
 
 
+
+class CollapsibleBox(QWidget):
+    def __init__(self, title, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(0)
+        
+        self.btn_toggle = QPushButton(f"▼ {title}")
+        self.btn_toggle.setStyleSheet("text-align: left; font-weight: bold; padding: 5px; background-color: transparent; border: none;")
+        self.btn_toggle.setCheckable(True)
+        self.btn_toggle.setChecked(False)  # False = expanded
+        self.btn_toggle.toggled.connect(self.on_toggle)
+        self.layout.addWidget(self.btn_toggle)
+        
+        self.content_widget = QWidget()
+        self.content_layout = QVBoxLayout(self.content_widget)
+        self.content_layout.setContentsMargins(5, 5, 5, 5)
+        self.layout.addWidget(self.content_widget)
+        
+        self.title_text = title
+        
+    def on_toggle(self, checked):
+        self.btn_toggle.setText(f"▶ {self.title_text}" if checked else f"▼ {self.title_text}")
+        self.content_widget.setVisible(not checked)
+
+    def set_collapsed(self, collapsed=True):
+        self.btn_toggle.setChecked(collapsed)
+
+class ReorderPanelsDialog(QDialog):
+    def __init__(self, app_ref):
+        super().__init__(app_ref)
+        self.app_ref = app_ref
+        self.setWindowTitle("Reorder Panels")
+        self.resize(400, 300)
+        layout = QVBoxLayout(self)
+        
+        lbl = QLabel("Drag and drop to reorder panels. The app will restart when applied.")
+        layout.addWidget(lbl)
+        
+        lists_layout = QHBoxLayout()
+        
+        left_grp = QGroupBox("Left Panel")
+        left_lay = QVBoxLayout(left_grp)
+        self.list_left = QListWidget()
+        self.list_left.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        left_order = self.app_ref.config.get("left_panel_order", [
+            "Recording Settings", "Derivative Engine", "Secondary Filtering", 
+            "Pump Calibration", "Axis Limits", "Data Analysis"
+        ])
+        self.list_left.addItems(left_order)
+        left_lay.addWidget(self.list_left)
+        lists_layout.addWidget(left_grp)
+        
+        right_grp = QGroupBox("Right Panel")
+        right_lay = QVBoxLayout(right_grp)
+        self.list_right = QListWidget()
+        self.list_right.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        right_order = self.app_ref.config.get("right_panel_order", [
+            "Tab Management", "Connection", "Experiment Notes"
+        ])
+        self.list_right.addItems(right_order)
+        right_lay.addWidget(self.list_right)
+        lists_layout.addWidget(right_grp)
+        
+        layout.addLayout(lists_layout)
+        
+        btn_layout = QHBoxLayout()
+        btn_apply = QPushButton("Apply and Restart")
+        btn_apply.clicked.connect(self.apply)
+        btn_cancel = QPushButton("Cancel")
+        btn_cancel.clicked.connect(self.reject)
+        
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_cancel)
+        btn_layout.addWidget(btn_apply)
+        layout.addLayout(btn_layout)
+        
+    def apply(self):
+        new_left = [self.list_left.item(i).text() for i in range(self.list_left.count())]
+        new_right = [self.list_right.item(i).text() for i in range(self.list_right.count())]
+        self.app_ref.config["left_panel_order"] = new_left
+        self.app_ref.config["right_panel_order"] = new_right
+        self.app_ref.save_config()
+        self.accept()
+        self.app_ref.restart_app()
+
 class BalanceTab(QWidget):
     def __init__(self, parent=None, app=None, tab_name="Balance"):
         super().__init__(parent)
@@ -162,11 +255,61 @@ class BalanceTab(QWidget):
         self.backup_path = os.path.join(backup_dir, f"{self.tab_name.replace(' ', '_')}_Backup.csv")
         self.prune_backup_file()
 
+    def update_button_text(self):
+        show_text = self.app.config.get("show_button_text", False) if self.app else False
+        
+        if self.recording:
+            self.btn_record.setText("⏹ Stop Recording" if show_text else "⏹")
+        else:
+            self.btn_record.setText("▶ Start Recording" if show_text else "▶")
+            
+        self.btn_clear.setText("🗑 Clear Data" if show_text else "🗑")
+        self.btn_save_excel.setText("📊 Save to Excel" if show_text else "📊")
+        self.btn_tare.setText("⚖ Tare Balance" if show_text else "⚖")
+        self.btn_save_graph.setText("🖼 Save Graph PNG" if show_text else "🖼")
+
     def build_ui(self):
-        main_layout = QHBoxLayout(self)
+        main_layout = QVBoxLayout(self)
+        
+        self.top_action_layout = QHBoxLayout()
+        
+        self.btn_record = QPushButton()
+        self.btn_record.setStyleSheet("background-color: #2ecc71; color: white; font-weight: bold;")
+        self.btn_record.clicked.connect(self.toggle_record)
+        self.btn_record.setToolTip("Start Recording")
+        
+        self.btn_clear = QPushButton()
+        self.btn_clear.setStyleSheet("background-color: #e74c3c; color: white;")
+        self.btn_clear.clicked.connect(self.clear_data)
+        self.btn_clear.setToolTip("Clear Data")
+        
+        self.btn_save_excel = QPushButton()
+        self.btn_save_excel.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
+        self.btn_save_excel.clicked.connect(self.save_excel)
+        self.btn_save_excel.setToolTip("Save to Excel")
+        
+        self.btn_tare = QPushButton()
+        self.btn_tare.clicked.connect(self.tare_balance)
+        self.btn_tare.setToolTip("Tare Balance")
+        
+        self.btn_save_graph = QPushButton()
+        self.btn_save_graph.setStyleSheet("background-color: #2980b9; color: white;")
+        self.btn_save_graph.clicked.connect(self.save_graph)
+        self.btn_save_graph.setToolTip("Save Graph PNG")
+        
+        self.top_action_layout.addWidget(self.btn_record)
+        self.top_action_layout.addWidget(self.btn_clear)
+        self.top_action_layout.addWidget(self.btn_save_excel)
+        self.top_action_layout.addWidget(self.btn_tare)
+        self.top_action_layout.addWidget(self.btn_save_graph)
+        self.top_action_layout.addStretch()
+        
+        main_layout.addLayout(self.top_action_layout)
         
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
         main_layout.addWidget(self.splitter)
+        
+        self.update_button_text()
         
         # --- LEFT PANEL ---
         left_widget = QWidget()
@@ -184,32 +327,29 @@ class BalanceTab(QWidget):
             layout.addLayout(row)
             return ent
 
+        self.left_panels = {}
+
         # Recording Settings
-        gb_rec = QGroupBox("Recording Settings")
-        l_rec = QVBoxLayout(gb_rec)
+        gb_rec = CollapsibleBox("Recording Settings")
+        l_rec = gb_rec.content_layout
         self.ent_interval = create_form_row(l_rec, "Interval (s):", "1.0")
         
         self.chk_auto_stop = QCheckBox("Enable Auto-Stop")
         l_rec.addWidget(self.chk_auto_stop)
         self.ent_auto_stop_min = create_form_row(l_rec, "Auto-Stop After (min):", "5.0")
         self.ent_auto_stop_thresh = create_form_row(l_rec, "Flow Threshold:", "0.1")
-        
-        self.btn_record = QPushButton("Start Recording")
-        self.btn_record.setStyleSheet("background-color: #2ecc71; color: white; font-weight: bold;")
-        self.btn_record.clicked.connect(self.toggle_record)
-        l_rec.addWidget(self.btn_record)
-        left_layout.addWidget(gb_rec)
+        self.left_panels["Recording Settings"] = gb_rec
         
         # Derivative Engine
-        gb_der = QGroupBox("Derivative Engine")
-        l_der = QVBoxLayout(gb_der)
+        gb_der = CollapsibleBox("Derivative Engine")
+        l_der = gb_der.content_layout
         self.ent_savgol_win = create_form_row(l_der, "SavGol Window:", "5")
         self.ent_savgol_poly = create_form_row(l_der, "SavGol Poly:", "3")
-        left_layout.addWidget(gb_der)
+        self.left_panels["Derivative Engine"] = gb_der
         
         # Filtering
-        gb_filt = QGroupBox("Secondary Filtering")
-        l_filt = QVBoxLayout(gb_filt)
+        gb_filt = CollapsibleBox("Secondary Filtering")
+        l_filt = gb_filt.content_layout
         self.combo_filter = QComboBox()
         self.combo_filter.addItems(["Mean", "Median", "EMA", "Butterworth", "Adaptive"])
         self.combo_filter.currentTextChanged.connect(self.on_filter_change)
@@ -219,22 +359,24 @@ class BalanceTab(QWidget):
         l_filt.addWidget(self.lbl_filter_param)
         self.ent_filter_param = QLineEdit("20")
         l_filt.addWidget(self.ent_filter_param)
-        left_layout.addWidget(gb_filt)
+        self.left_panels["Secondary Filtering"] = gb_filt
         
         # Calibration
-        gb_cal = QGroupBox("Pump Calibration")
-        l_cal = QVBoxLayout(gb_cal)
+        gb_cal = CollapsibleBox("Pump Calibration")
+        gb_cal.set_collapsed(True)
+        l_cal = gb_cal.content_layout
         self.ent_rpm = create_form_row(l_cal, "Pump RPM:", "30")
         self.ent_rollers = create_form_row(l_cal, "Rollers:", "3")
         self.btn_log_cal = QPushButton("Log Calibration Point")
         self.btn_log_cal.setStyleSheet("background-color: #8e44ad; color: white; font-weight: bold;")
         self.btn_log_cal.clicked.connect(self.log_calibration)
         l_cal.addWidget(self.btn_log_cal)
-        left_layout.addWidget(gb_cal)
+        self.left_panels["Pump Calibration"] = gb_cal
         
         # Axis Limits
-        gb_axis = QGroupBox("Axis Limits")
-        l_axis = QVBoxLayout(gb_axis)
+        gb_axis = CollapsibleBox("Axis Limits")
+        gb_axis.set_collapsed(True)
+        l_axis = gb_axis.content_layout
         
         self.chk_auto_x = QCheckBox("Auto Time")
         self.chk_auto_x.setChecked(True)
@@ -266,18 +408,28 @@ class BalanceTab(QWidget):
         self.btn_apply_lims = QPushButton("Apply Manual Limits")
         self.btn_apply_lims.clicked.connect(self.apply_axis_limits)
         l_axis.addWidget(self.btn_apply_lims)
-        left_layout.addWidget(gb_axis)
+        self.left_panels["Axis Limits"] = gb_axis
         
         # Data Analysis
-        gb_ana = QGroupBox("Data Analysis")
-        l_ana = QVBoxLayout(gb_ana)
+        gb_ana = CollapsibleBox("Data Analysis")
+        l_ana = gb_ana.content_layout
         self.ent_fit_start = create_form_row(l_ana, "Fit Start (min):", "0")
         self.ent_fit_end = create_form_row(l_ana, "Fit End (min):", "10")
         self.btn_apply_fit = QPushButton("Apply Linear Fit")
         self.btn_apply_fit.setStyleSheet("background-color: #e67e22; color: white;")
         self.btn_apply_fit.clicked.connect(self.apply_linear_fit)
         l_ana.addWidget(self.btn_apply_fit)
-        left_layout.addWidget(gb_ana)
+        self.left_panels["Data Analysis"] = gb_ana
+        
+        left_order = self.app.config.get("left_panel_order", [
+            "Recording Settings", "Derivative Engine", "Secondary Filtering", 
+            "Pump Calibration", "Axis Limits", "Data Analysis"
+        ]) if self.app else ["Recording Settings", "Derivative Engine", "Secondary Filtering", "Pump Calibration", "Axis Limits", "Data Analysis"]
+
+        for name in left_order:
+            if name in self.left_panels:
+                left_layout.addWidget(self.left_panels[name])
+                
         left_layout.addStretch()
         
         self.splitter.addWidget(left_scroll)
@@ -290,19 +442,19 @@ class BalanceTab(QWidget):
         
         # Plot
         self.fig, self.ax_mass = plt.subplots(figsize=(8, 6))
-        self.fig.patch.set_facecolor('#2b2b2b')
-        self.ax_mass.set_facecolor('#2b2b2b')
+        self.fig.patch.set_facecolor('white')
+        self.ax_mass.set_facecolor('white')
         self.ax_flow = self.ax_mass.twinx()
         
-        self.ax_mass.set_title(f"{self.tab_name} - Live Weight Data")
-        self.ax_mass.set_xlabel("Time (minutes)", color='white')
-        self.ax_mass.set_ylabel("Weight (g)", color='#3498db')
-        self.ax_mass.tick_params(axis='x', colors='white')
-        self.ax_mass.tick_params(axis='y', labelcolor='#3498db')
-        self.ax_mass.grid(True, alpha=0.3)
+        self.ax_mass.set_title(f"{self.tab_name} - Live Weight Data", color='black')
+        self.ax_mass.set_xlabel("Time (minutes)", color='black')
+        self.ax_mass.set_ylabel("Weight (g)", color='#2980b9')
+        self.ax_mass.tick_params(axis='x', colors='black')
+        self.ax_mass.tick_params(axis='y', labelcolor='#2980b9')
+        self.ax_mass.grid(True, alpha=0.3, color='gray')
         
-        self.ax_flow.set_ylabel("Flow Rate (g/min)", color='#e74c3c')
-        self.ax_flow.tick_params(axis='y', labelcolor='#e74c3c')
+        self.ax_flow.set_ylabel("Flow Rate (g/min)", color='#c0392b')
+        self.ax_flow.tick_params(axis='y', labelcolor='#c0392b')
         
         self.line_mass, = self.ax_mass.plot([], [], marker='o', linestyle='-', color='#3498db', label='Mass')
         self.line_flow, = self.ax_flow.plot([], [], marker='', linestyle='-', color='#e74c3c', label='Flow')
@@ -328,6 +480,33 @@ class BalanceTab(QWidget):
         right_scroll = QScrollArea()
         right_scroll.setWidgetResizable(True)
         right_scroll.setWidget(right_widget)
+        
+        # Tab Management
+        gb_tab = QGroupBox("Tab Management")
+        l_tab = QVBoxLayout(gb_tab)
+        
+        l_tab.addWidget(QLabel("New Tab Name:"))
+        self.ent_new_tab = QLineEdit()
+        l_tab.addWidget(self.ent_new_tab)
+        
+        btn_add_tab = QPushButton("Add Tab")
+        btn_add_tab.clicked.connect(self.request_add_tab)
+        l_tab.addWidget(btn_add_tab)
+        
+        btn_rename_tab = QPushButton("Rename Current Tab")
+        btn_rename_tab.clicked.connect(self.request_rename_tab)
+        l_tab.addWidget(btn_rename_tab)
+        
+        self.btn_save_tab = QPushButton("Save Tab Configuration")
+        self.btn_save_tab.clicked.connect(self.save_tab_config)
+        l_tab.addWidget(self.btn_save_tab)
+        
+        self.btn_close_tab = QPushButton("✖ Close Tab")
+        self.btn_close_tab.setStyleSheet("background-color: #e74c3c; color: white;")
+        self.btn_close_tab.clicked.connect(self.close_tab)
+        l_tab.addWidget(self.btn_close_tab)
+        
+        right_layout.addWidget(gb_tab)
         
         # Connection
         gb_conn = QGroupBox("Connection")
@@ -365,42 +544,16 @@ class BalanceTab(QWidget):
         gb_notes = QGroupBox("Experiment Notes")
         l_notes = QVBoxLayout(gb_notes)
         self.txt_notes = QTextEdit()
-        self.txt_notes.setMaximumHeight(150)
+        self.txt_notes.setMinimumHeight(150)
         l_notes.addWidget(self.txt_notes)
         right_layout.addWidget(gb_notes)
-        
-        self.btn_tare = QPushButton("Tare Balance")
-        self.btn_tare.clicked.connect(self.tare_balance)
-        right_layout.addWidget(self.btn_tare)
-        
-        self.btn_save_excel = QPushButton("Save to Excel")
-        self.btn_save_excel.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
-        self.btn_save_excel.clicked.connect(self.save_excel)
-        right_layout.addWidget(self.btn_save_excel)
-        
-        self.btn_save_graph = QPushButton("Save Graph PNG")
-        self.btn_save_graph.setStyleSheet("background-color: #2980b9; color: white;")
-        self.btn_save_graph.clicked.connect(self.save_graph)
-        right_layout.addWidget(self.btn_save_graph)
         
         self.btn_recover = QPushButton("Recover Session")
         self.btn_recover.setStyleSheet("background-color: #8e44ad; color: white;")
         self.btn_recover.clicked.connect(self.prompt_session_recovery)
         right_layout.addWidget(self.btn_recover)
         
-        self.btn_clear = QPushButton("Clear Data")
-        self.btn_clear.setStyleSheet("background-color: #e74c3c; color: white;")
-        self.btn_clear.clicked.connect(self.clear_data)
-        right_layout.addWidget(self.btn_clear)
-        
-        self.btn_save_tab = QPushButton("Save Tab Configuration")
-        self.btn_save_tab.clicked.connect(self.save_tab_config)
-        right_layout.addWidget(self.btn_save_tab)
-        
-        self.btn_close_tab = QPushButton("Close Tab")
-        self.btn_close_tab.setStyleSheet("background-color: #e74c3c; color: white;")
-        self.btn_close_tab.clicked.connect(self.close_tab)
-        right_layout.addWidget(self.btn_close_tab)
+        # btn_save_tab moved to Tab Management
         
         right_layout.addStretch()
         self.splitter.addWidget(right_scroll)
@@ -740,14 +893,14 @@ class BalanceTab(QWidget):
                 self.wall_clock_min.clear()
             self.recording = True
             self.last_activity_time = time.time()
-            self.ax_mass.set_title(f"{self.tab_name} - Live Weight Data (RECORDING)")
-            self.btn_record.setText("Stop Recording")
+            self.ax_mass.set_title(f"{self.tab_name} - Live Weight Data (RECORDING)", color='black')
             self.btn_record.setStyleSheet("background-color: #e74c3c; color: white;")
+            self.update_button_text()
         else:
             self.recording = False
-            self.ax_mass.set_title(f"{self.tab_name} - Live Weight Data (PAUSED)")
-            self.btn_record.setText("Start Recording")
+            self.ax_mass.set_title(f"{self.tab_name} - Live Weight Data (PAUSED)", color='black')
             self.btn_record.setStyleSheet("background-color: #2ecc71; color: white; font-weight: bold;")
+            self.update_button_text()
         self.canvas.draw_idle()
 
     def tare_balance(self):
@@ -1082,6 +1235,15 @@ class BalanceTab(QWidget):
         if self.app:
             self.app.close_tab(self)
 
+    def request_add_tab(self):
+        if self.app:
+            self.app.add_tab(self.ent_new_tab.text())
+            self.ent_new_tab.clear()
+
+    def request_rename_tab(self):
+        if self.app:
+            self.app.rename_tab()
+
 
 class MultiBalanceApp(QMainWindow):
     def __init__(self):
@@ -1097,28 +1259,33 @@ class MultiBalanceApp(QMainWindow):
                     self.config.update(json.load(f))
             except: pass
             
-        # Top Bar
+        # Menu Bar
+        menu = self.menuBar()
+        settings_menu = menu.addMenu("Settings")
+        self.action_show_text = settings_menu.addAction("Show Button Text")
+        self.action_show_text.setCheckable(True)
+        self.action_show_text.setChecked(self.config.get("show_button_text", False))
+        self.action_show_text.triggered.connect(self.toggle_button_text)
+        
+        self.action_dark_mode = settings_menu.addAction("Dark Mode")
+        self.action_dark_mode.setCheckable(True)
+        self.action_dark_mode.setChecked(self.config.get("dark_mode", True))
+        self.action_dark_mode.triggered.connect(self.toggle_theme)
+        
+        self.action_reorder = settings_menu.addAction("Reorder Panels...")
+        self.action_reorder.triggered.connect(self.open_reorder_dialog)
+        
+        settings_menu.addSeparator()
+        self.action_restart = settings_menu.addAction("🔄 Restart App")
+        self.action_restart.triggered.connect(self.restart_app)
+        
+        # Main Layout
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
         
-        top_bar = QHBoxLayout()
-        top_bar.addWidget(QLabel("New Tab Name:"))
-        self.ent_tab_name = QLineEdit("Balance 1")
-        top_bar.addWidget(self.ent_tab_name)
-        
-        btn_add = QPushButton("Add Tab")
-        btn_add.clicked.connect(self.add_tab)
-        top_bar.addWidget(btn_add)
-        
-        btn_rename = QPushButton("Rename Current Tab")
-        btn_rename.clicked.connect(self.rename_tab)
-        top_bar.addWidget(btn_rename)
-        
-        top_bar.addStretch()
-        layout.addLayout(top_bar)
-        
         self.tabs = QTabWidget()
+        self.tabs.setMovable(True)
         layout.addWidget(self.tabs)
         
         self.tab_objects = []
@@ -1132,7 +1299,45 @@ class MultiBalanceApp(QMainWindow):
         if not has_known:
             self.add_tab()
 
+    def toggle_button_text(self, checked):
+        self.config["show_button_text"] = checked
+        self.save_config()
+        for tab in self.tab_objects:
+            if hasattr(tab, "update_button_text"):
+                tab.update_button_text()
+
+    def toggle_theme(self, checked):
+        self.config["dark_mode"] = checked
+        self.save_config()
+        theme = "dark" if checked else "light"
+        QApplication.instance().setStyleSheet(qdarktheme.load_stylesheet(theme))
+
+    def open_reorder_dialog(self):
+        dlg = ReorderPanelsDialog(self)
+        dlg.exec()
+
+    def restart_app(self):
+        self.save_config()
+        for tab in self.tab_objects:
+            if hasattr(tab, 'save_tab_settings'): tab.save_tab_settings()
+            if tab.serial_thread: tab.disconnect_serial()
+        
+        import subprocess
+        subprocess.Popen([sys.executable] + sys.argv)
+        QApplication.quit()
+
     def save_config(self):
+        if "known_balances" in self.config:
+            new_known = {}
+            for i in range(self.tabs.count()):
+                tab = self.tabs.widget(i)
+                if tab.tab_name in self.config["known_balances"]:
+                    new_known[tab.tab_name] = self.config["known_balances"][tab.tab_name]
+            for name, details in self.config["known_balances"].items():
+                if name not in new_known:
+                    new_known[name] = details
+            self.config["known_balances"] = new_known
+
         try:
             with open(self.config_path, "w") as f:
                 json.dump(self.config, f, indent=4)
@@ -1148,11 +1353,9 @@ class MultiBalanceApp(QMainWindow):
             self.config["known_balances"][name]["unsaved"] = state
             self.save_config()
 
-    def add_tab(self):
-        name = self.ent_tab_name.text()
+    def add_tab(self, name=None):
         if not name: name = f"Balance {self.tabs.count() + 1}"
         self.add_tab_with_settings(name, "Bonvoisin", "")
-        self.ent_tab_name.setText(f"Balance {self.tabs.count() + 1}")
 
     def add_tab_with_settings(self, name, brand, port):
         tab = BalanceTab(app=self, tab_name=name)
@@ -1212,9 +1415,11 @@ class MultiBalanceApp(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setStyleSheet(qdarktheme.load_stylesheet("dark"))
     
     window = MultiBalanceApp()
-    window.show()
+    theme = "dark" if window.config.get("dark_mode", True) else "light"
+    app.setStyleSheet(qdarktheme.load_stylesheet(theme))
+    
+    window.showMaximized()
     
     sys.exit(app.exec())
