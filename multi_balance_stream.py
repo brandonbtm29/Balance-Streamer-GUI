@@ -21,7 +21,8 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QComboBox, QCheckBox, QTextEdit, QGroupBox, 
                              QMessageBox, QFileDialog, QTabWidget, QDialog, 
                              QGridLayout, QSplitter, QScrollArea, QTableWidget, 
-                             QTableWidgetItem, QAbstractItemView, QHeaderView, QListWidget)
+                             QTableWidgetItem, QAbstractItemView, QHeaderView, QListWidget,
+                             QButtonGroup, QRadioButton)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread
 from PyQt6.QtGui import QFont, QColor
 
@@ -177,7 +178,7 @@ class ReorderPanelsDialog(QDialog):
         self.list_left = QListWidget()
         self.list_left.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         left_order = self.app_ref.config.get("left_panel_order", [
-            "Recording Settings", "Derivative Engine", "Secondary Filtering", 
+            "Recording Settings", "Derivative Engine", "Secondary Smoothing", 
             "Pump Calibration", "Axis Limits", "Data Analysis"
         ])
         self.list_left.addItems(left_order)
@@ -348,7 +349,7 @@ class BalanceTab(QWidget):
         self.left_panels["Derivative Engine"] = gb_der
         
         # Filtering
-        gb_filt = CollapsibleBox("Secondary Filtering")
+        gb_filt = CollapsibleBox("Secondary Smoothing")
         l_filt = gb_filt.content_layout
         self.combo_filter = QComboBox()
         self.combo_filter.addItems(["Mean", "Median", "EMA", "Butterworth", "Adaptive"])
@@ -359,7 +360,13 @@ class BalanceTab(QWidget):
         l_filt.addWidget(self.lbl_filter_param)
         self.ent_filter_param = QLineEdit("20")
         l_filt.addWidget(self.ent_filter_param)
-        self.left_panels["Secondary Filtering"] = gb_filt
+        
+        self.btn_apply_filter = QPushButton("Apply Smoothing")
+        self.btn_apply_filter.setStyleSheet("background-color: #27ae60; color: white;")
+        self.btn_apply_filter.clicked.connect(self.manual_apply_filters)
+        l_filt.addWidget(self.btn_apply_filter)
+        
+        self.left_panels["Secondary Smoothing"] = gb_filt
         
         # Calibration
         gb_cal = CollapsibleBox("Pump Calibration")
@@ -422,9 +429,9 @@ class BalanceTab(QWidget):
         self.left_panels["Data Analysis"] = gb_ana
         
         left_order = self.app.config.get("left_panel_order", [
-            "Recording Settings", "Derivative Engine", "Secondary Filtering", 
+            "Recording Settings", "Derivative Engine", "Secondary Smoothing", 
             "Pump Calibration", "Axis Limits", "Data Analysis"
-        ]) if self.app else ["Recording Settings", "Derivative Engine", "Secondary Filtering", "Pump Calibration", "Axis Limits", "Data Analysis"]
+        ]) if self.app else ["Recording Settings", "Derivative Engine", "Secondary Smoothing", "Pump Calibration", "Axis Limits", "Data Analysis"]
 
         for name in left_order:
             if name in self.left_panels:
@@ -938,6 +945,10 @@ class BalanceTab(QWidget):
             except: pass
         self.canvas.draw_idle()
 
+    def manual_apply_filters(self):
+        self.last_flow_calc_n = -1
+        self.update_gui_components()
+
     def apply_linear_fit(self):
         if len(self.times_min) < 2: return
         try:
@@ -1279,6 +1290,10 @@ class MultiBalanceApp(QMainWindow):
         self.action_restart = settings_menu.addAction("🔄 Restart App")
         self.action_restart.triggered.connect(self.restart_app)
         
+        help_menu = menu.addMenu("Help")
+        self.action_help_engine = help_menu.addAction("About Flow Rate Engine")
+        self.action_help_engine.triggered.connect(self.show_help_dialog)
+        
         # Main Layout
         central = QWidget()
         self.setCentralWidget(central)
@@ -1315,6 +1330,24 @@ class MultiBalanceApp(QMainWindow):
     def open_reorder_dialog(self):
         dlg = ReorderPanelsDialog(self)
         dlg.exec()
+
+    def show_help_dialog(self):
+        msg = QMessageBox(self)
+        msg.setWindowTitle("About Flow Rate Engine")
+        msg.setText(
+            "<b>Derivative Engine:</b><br>"
+            "This application uses a Savitzky-Golay (SavGol) filter to compute the flow rate (derivative) from the raw mass data. "
+            "Savitzky-Golay fits a local polynomial to the data points, which smooths out high-frequency noise while calculating a highly accurate derivative.<br><br>"
+            "<b>Secondary Smoothing:</b><br>"
+            "Because flow rate is a derivative, it can be inherently noisy. Secondary Smoothing applies a final low-pass filter to the calculated flow rate for better visualization.<br>"
+            "<ul>"
+            "<li><b>Mean/Median:</b> Standard moving window averages.</li>"
+            "<li><b>EMA:</b> Exponential Moving Average, gives more weight to recent data.</li>"
+            "<li><b>Butterworth:</b> A sophisticated signal processing filter for extremely smooth lines.</li>"
+            "<li><b>Adaptive:</b> Automatically adjusts its window size based on your pump RPM and roller count.</li>"
+            "</ul>"
+        )
+        msg.exec()
 
     def restart_app(self):
         self.save_config()
