@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QMessageBox, QFileDialog, QTabWidget, QDialog, 
                              QGridLayout, QSplitter, QScrollArea, QTableWidget, 
                              QTableWidgetItem, QAbstractItemView, QHeaderView, QListWidget,
-                             QButtonGroup, QRadioButton)
+                             QButtonGroup, QRadioButton, QFormLayout)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread
 from PyQt6.QtGui import QFont, QColor
 
@@ -216,7 +216,146 @@ class ReorderPanelsDialog(QDialog):
         self.app_ref.config["right_panel_order"] = new_right
         self.app_ref.save_config()
         self.accept()
-        self.app_ref.restart_app()
+class GlobalSavingSettingsDialog(QDialog):
+    def __init__(self, parent=None, config=None):
+        super().__init__(parent)
+        self.setWindowTitle("Global Saving Settings & Metadata")
+        self.setMinimumWidth(600)
+        self.setMinimumHeight(500)
+        self.config = config or {}
+        
+        main_layout = QVBoxLayout(self)
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll_content = QWidget()
+        self.scroll_layout = QVBoxLayout(scroll_content)
+        
+        # Save Folder
+        gb_folder = QGroupBox("Global Default Save Folder")
+        l_folder = QHBoxLayout(gb_folder)
+        self.ent_folder = QLineEdit(self.config.get("global_default_save_folder", "Data"))
+        btn_browse = QPushButton("Browse")
+        btn_browse.clicked.connect(self.browse_folder)
+        l_folder.addWidget(self.ent_folder)
+        l_folder.addWidget(btn_browse)
+        self.scroll_layout.addWidget(gb_folder)
+        
+        # Tokens
+        gb_tokens = QGroupBox("Global Metadata Tokens")
+        self.layout_tokens = QVBoxLayout(gb_tokens)
+        self.token_rows = []
+        self.grid_buttons = QGridLayout()
+        self.token_button_refs = []
+        
+        btn_add_token = QPushButton("+ Add Custom Token")
+        btn_add_token.clicked.connect(lambda: self.add_token_row("", ""))
+        self.layout_tokens.addWidget(btn_add_token)
+        
+        global_tokens = self.config.get("global_tokens", [
+            {"name": "Column Name", "value": ""},
+            {"name": "Material", "value": ""},
+            {"name": "Flow rate", "value": ""},
+            {"name": "Bed length", "value": ""},
+            {"name": "Run #", "value": ""}
+        ])
+        for t in global_tokens:
+            self.add_token_row(t.get("name", ""), t.get("value", ""))
+            
+        self.scroll_layout.addWidget(gb_tokens)
+        
+        # Template
+        gb_temp = QGroupBox("Global Filename Template")
+        l_temp = QVBoxLayout(gb_temp)
+        l_temp.addWidget(QLabel("Click a token below to insert it at the cursor position:"))
+        self.ent_template = QLineEdit(self.config.get("global_filename_template", "<Tab Name>_<Date>_<Time>"))
+        l_temp.addWidget(self.ent_template)
+        
+        l_temp.addLayout(self.grid_buttons)
+        self.refresh_token_buttons()
+        self.scroll_layout.addWidget(gb_temp)
+        
+        self.scroll_layout.addStretch()
+        scroll.setWidget(scroll_content)
+        main_layout.addWidget(scroll)
+        
+        # Buttons
+        btn_layout = QHBoxLayout()
+        btn_ok = QPushButton("Save Globally")
+        btn_cancel = QPushButton("Cancel")
+        btn_layout.addWidget(btn_ok)
+        btn_layout.addWidget(btn_cancel)
+        main_layout.addLayout(btn_layout)
+        
+        btn_ok.clicked.connect(self.accept)
+        btn_cancel.clicked.connect(self.reject)
+        
+    def browse_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Save Folder", self.ent_folder.text())
+        if folder: self.ent_folder.setText(folder)
+        
+    def add_token_row(self, name, value):
+        row_widget = QWidget()
+        row_layout = QHBoxLayout(row_widget)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        
+        ent_name = QLineEdit(name)
+        ent_name.setPlaceholderText("Token Name")
+        ent_name.textChanged.connect(self.refresh_token_buttons)
+        ent_value = QLineEdit(value)
+        ent_value.setPlaceholderText("Value")
+        
+        btn_remove = QPushButton("X")
+        btn_remove.setFixedWidth(30)
+        btn_remove.setStyleSheet("background-color: #e74c3c; color: white;")
+        
+        row_layout.addWidget(ent_name)
+        row_layout.addWidget(ent_value)
+        row_layout.addWidget(btn_remove)
+        
+        idx = self.layout_tokens.count() - 1
+        self.layout_tokens.insertWidget(idx, row_widget)
+        
+        row_data = (row_widget, ent_name, ent_value)
+        self.token_rows.append(row_data)
+        
+        btn_remove.clicked.connect(lambda: self.remove_token_row(row_data))
+        self.refresh_token_buttons()
+        
+    def remove_token_row(self, row_data):
+        row_widget, ent_name, ent_value = row_data
+        if row_data in self.token_rows:
+            self.token_rows.remove(row_data)
+        self.layout_tokens.removeWidget(row_widget)
+        row_widget.deleteLater()
+        self.refresh_token_buttons()
+        
+    def refresh_token_buttons(self):
+        while self.grid_buttons.count():
+            item = self.grid_buttons.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        self.token_button_refs = []
+            
+        tokens = ["Tab Name", "Date", "Time"]
+        for _, ent_name, _ in self.token_rows:
+            n = ent_name.text().strip()
+            if n and n not in tokens: tokens.append(n)
+            
+        row = 0; col = 0
+        for tok in tokens:
+            btn = QPushButton(f"<{tok}>")
+            btn.clicked.connect(lambda checked, t=tok: self.ent_template.insert(f"<{t}>"))
+            self.grid_buttons.addWidget(btn, row, col)
+            self.token_button_refs.append(btn)
+            col += 1
+            if col > 3:
+                col = 0
+                row += 1
+                
+    def get_tokens(self):
+        return [{"name": n.text(), "value": v.text()} for _, n, v in self.token_rows if n.text().strip()]
 
 class BalanceTab(QWidget):
     def __init__(self, parent=None, app=None, tab_name="Balance"):
@@ -508,6 +647,10 @@ class BalanceTab(QWidget):
         self.btn_save_tab.clicked.connect(self.save_tab_config)
         l_tab.addWidget(self.btn_save_tab)
         
+        self.btn_load_tab = QPushButton("Load Tab Configuration")
+        self.btn_load_tab.clicked.connect(self.load_tab_config_dialog)
+        l_tab.addWidget(self.btn_load_tab)
+        
         self.btn_close_tab = QPushButton("✖ Close Tab")
         self.btn_close_tab.setStyleSheet("background-color: #e74c3c; color: white;")
         self.btn_close_tab.clicked.connect(self.close_tab)
@@ -546,6 +689,56 @@ class BalanceTab(QWidget):
         self.lbl_status.setStyleSheet("color: gray; font-weight: bold;")
         l_conn.addWidget(self.lbl_status)
         right_layout.addWidget(gb_conn)
+        
+        # Save Settings
+        gb_save = QGroupBox("Auto-Save Settings")
+        l_save = QVBoxLayout(gb_save)
+        
+        l_save.addWidget(QLabel("Save Folder Path:"))
+        folder_layout = QHBoxLayout()
+        default_folder = self.app.config.get("global_default_save_folder", "Data") if self.app else "Data"
+        self.ent_save_folder = QLineEdit(default_folder)
+        self.ent_save_folder.setMinimumHeight(35)
+        btn_browse = QPushButton("Browse")
+        btn_browse.setMinimumHeight(35)
+        btn_browse.clicked.connect(self.browse_save_folder)
+        folder_layout.addSpacing(20)
+        folder_layout.addWidget(self.ent_save_folder)
+        folder_layout.addWidget(btn_browse)
+        l_save.addLayout(folder_layout)
+        
+        l_save.addSpacing(10)
+        
+        # Template
+        self.chk_use_global_template = QCheckBox("Use Global Filename Template")
+        self.chk_use_global_template.setChecked(True)
+        self.chk_use_global_template.stateChanged.connect(self.toggle_template_source)
+        l_save.addWidget(self.chk_use_global_template)
+        
+        temp_layout = QHBoxLayout()
+        temp_layout.addWidget(QLabel("Tab Template:"))
+        self.ent_save_template = QLineEdit()
+        if self.app:
+            self.ent_save_template.setText(self.app.config.get("global_filename_template", "<Tab Name>_<Date>_<Time>"))
+        self.ent_save_template.setEnabled(False)
+        temp_layout.addWidget(self.ent_save_template)
+        l_save.addLayout(temp_layout)
+        
+        l_save.addSpacing(10)
+        
+        mode_layout = QFormLayout()
+        self.combo_autosave = QComboBox()
+        self.combo_autosave.addItems(["Off", "On Auto-Stop", "Every X Minutes"])
+        mode_layout.addRow("Auto-Save Mode:", self.combo_autosave)
+        
+        self.ent_autosave_min = QLineEdit("5.0")
+        mode_layout.addRow("Auto-Save Interval (min):", self.ent_autosave_min)
+        l_save.addLayout(mode_layout)
+        
+        self.combo_autosave.currentIndexChanged.connect(self.toggle_autosave_interval)
+        self.toggle_autosave_interval()
+        
+        right_layout.addWidget(gb_save)
         
         # Notes
         gb_notes = QGroupBox("Experiment Notes")
@@ -810,7 +1003,21 @@ class BalanceTab(QWidget):
                         if time.time() - getattr(self, 'last_activity_time', time.time()) > (stop_min * 60.0):
                             self.toggle_record()
                             self.txt_notes.append(f"\n[Auto-Stop] Triggered at {datetime.datetime.now().strftime('%H:%M:%S')} due to flow rate < {thresh} for {stop_min} min.")
+                            
+                            if self.combo_autosave.currentText() == "On Auto-Stop":
+                                self.save_excel(auto=True)
+                                self.txt_notes.append(f"[Auto-Save] Data saved to Data folder automatically.")
             
+            if self.recording and self.combo_autosave.currentText() == "Every X Minutes":
+                try: autosave_interval = float(self.ent_autosave_min.text())
+                except: autosave_interval = 5.0
+                
+                if len(self.times_sec) > 0:
+                    elapsed_min = self.times_sec[-1] / 60.0
+                    last_autosave = getattr(self, 'last_autosave_min', 0.0)
+                    if (elapsed_min - last_autosave) >= autosave_interval:
+                        self.save_excel(auto=True)
+                        self.last_autosave_min = elapsed_min
         if needs_redraw or n > n_items:
             try:
                 # Update plot
@@ -896,6 +1103,7 @@ class BalanceTab(QWidget):
         if not self.recording:
             if len(self.times_sec) == 0:
                 self.start_time = time.time()
+                self.last_autosave_min = 0.0
             if hasattr(self, 'wall_clock_min'):
                 self.wall_clock_min.clear()
             self.recording = True
@@ -1029,11 +1237,57 @@ class BalanceTab(QWidget):
             QMessageBox.information(self, "Success", f"Logged: {round(flow,4)} g/min")
         except: pass
 
-    def save_excel(self):
+    def browse_save_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Save Folder", self.ent_save_folder.text())
+        if folder:
+            self.ent_save_folder.setText(folder)
+
+    def toggle_autosave_interval(self):
+        self.ent_autosave_min.setEnabled(self.combo_autosave.currentText() == "Every X Minutes")
+
+    def toggle_template_source(self):
+        use_global = self.chk_use_global_template.isChecked()
+        self.ent_save_template.setEnabled(not use_global)
+        if use_global and self.app:
+            self.ent_save_template.setText(self.app.config.get("global_filename_template", "<Tab Name>_<Date>_<Time>"))
+
+    def get_resolved_string(self, template_str):
+        if not template_str: return ""
+        s = template_str
+        s = s.replace("<Tab Name>", self.tab_name)
+        s = s.replace("<Date>", datetime.datetime.now().strftime("%Y-%m-%d"))
+        s = s.replace("<Time>", datetime.datetime.now().strftime("%H%M%S"))
+        global_tokens = self.app.config.get("global_tokens", []) if self.app else []
+        for t in global_tokens:
+            n = t.get("name", "").strip()
+            if n:
+                s = s.replace(f"<{n}>", t.get("value", ""))
+        return s
+
+    def save_excel(self, auto=False):
         if not self.times_sec: return
-        dt_str = datetime.datetime.now().strftime("%Y-%m-%d_%H%M")
-        filepath, _ = QFileDialog.getSaveFileName(self, "Save Excel Data", f"{self.tab_name.replace(' ', '_')}_data_{dt_str}.xlsx", "Excel files (*.xlsx)")
-        if not filepath: return
+        
+        if self.chk_use_global_template.isChecked():
+            template = self.app.config.get("global_filename_template", "<Tab Name>_<Date>_<Time>") if self.app else "<Tab Name>_<Date>_<Time>"
+        else:
+            template = self.ent_save_template.text()
+            if not template.strip(): template = "<Tab Name>_<Date>_<Time>"
+            
+        filename = self.get_resolved_string(template)
+        if not filename.endswith(".xlsx"): filename += ".xlsx"
+        filename = filename.replace(' ', '_')
+        
+        save_dir = self.ent_save_folder.text().strip()
+        if not save_dir: save_dir = "Data"
+        
+        os.makedirs(save_dir, exist_ok=True)
+        default_path = os.path.join(save_dir, filename)
+        
+        if auto:
+            filepath = default_path
+        else:
+            filepath, _ = QFileDialog.getSaveFileName(self, "Save Excel Data", default_path, "Excel files (*.xlsx)")
+            if not filepath: return
             
         try:
             wb = openpyxl.Workbook()
@@ -1048,9 +1302,20 @@ class BalanceTab(QWidget):
             doc_ws["B4"] = self.combo_brand.currentText()
             doc_ws["A5"] = "COM Port:"
             doc_ws["B5"] = self.combo_com.currentText()
-            doc_ws["A12"] = "Experiment Notes:"
-            doc_ws["A12"].font = Font(bold=True)
-            doc_ws["A13"] = self.txt_notes.toPlainText()
+            
+            current_row = 7
+            global_tokens = self.app.config.get("global_tokens", []) if self.app else []
+            for t in global_tokens:
+                n = t.get("name", "").strip()
+                if n:
+                    doc_ws[f"A{current_row}"] = f"{n}:"
+                    doc_ws[f"B{current_row}"] = t.get("value", "")
+                    current_row += 1
+            
+            current_row += 1
+            doc_ws[f"A{current_row}"] = "Experiment Notes:"
+            doc_ws[f"A{current_row}"].font = Font(bold=True)
+            doc_ws[f"A{current_row+1}"] = self.get_resolved_string(self.txt_notes.toPlainText())
             doc_ws.column_dimensions["A"].width = 25
             doc_ws.column_dimensions["B"].width = 30
             
@@ -1205,14 +1470,19 @@ class BalanceTab(QWidget):
             "do_auto_stop": self.chk_auto_stop.isChecked(),
             "auto_stop_min": self.ent_auto_stop_min.text(),
             "auto_stop_thresh": self.ent_auto_stop_thresh.text(),
-            "experiment_notes": self.txt_notes.toPlainText()
+            "experiment_notes": self.txt_notes.toPlainText(),
+            "save_folder": self.ent_save_folder.text(),
+            "use_global_template": self.chk_use_global_template.isChecked(),
+            "save_template": self.ent_save_template.text(),
+            "autosave_mode": self.combo_autosave.currentText(),
+            "autosave_min": self.ent_autosave_min.text()
         }
 
     def load_tab_settings(self):
         if not self.app: return
         kb = self.app.config.get("known_balances", {})
-        if self.tab_name in kb:
-            settings = kb[self.tab_name].get("settings", {})
+        if self.tab_name in kb and "settings" in kb[self.tab_name]:
+            settings = kb[self.tab_name]["settings"]
             if "interval" in settings: self.ent_interval.setText(settings["interval"])
             if "savgol_win" in settings: self.ent_savgol_win.setText(settings["savgol_win"])
             if "savgol_poly" in settings: self.ent_savgol_poly.setText(settings["savgol_poly"])
@@ -1227,6 +1497,15 @@ class BalanceTab(QWidget):
             if "auto_stop_min" in settings: self.ent_auto_stop_min.setText(settings["auto_stop_min"])
             if "auto_stop_thresh" in settings: self.ent_auto_stop_thresh.setText(settings["auto_stop_thresh"])
             if "experiment_notes" in settings: self.txt_notes.setText(settings["experiment_notes"])
+            if "save_folder" in settings: self.ent_save_folder.setText(settings["save_folder"])
+            
+            if "use_global_template" in settings:
+                self.chk_use_global_template.setChecked(settings["use_global_template"])
+            if "save_template" in settings:
+                self.ent_save_template.setText(settings["save_template"])
+                
+            if "autosave_mode" in settings: self.combo_autosave.setCurrentText(settings["autosave_mode"])
+            if "autosave_min" in settings: self.ent_autosave_min.setText(settings["autosave_min"])
 
     def save_tab_config(self):
         cfg = {
@@ -1238,6 +1517,53 @@ class BalanceTab(QWidget):
         self.app.config["saved_tabs"].append(cfg)
         self.app.save_config()
         QMessageBox.information(self, "Success", "Tab Configuration Saved.")
+
+    def load_tab_config_dialog(self):
+        saved_tabs = self.app.config.get("saved_tabs", [])
+        if not saved_tabs:
+            QMessageBox.information(self, "Info", "No saved tab configurations found.")
+            return
+            
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Load Tab Configuration")
+        dialog.setMinimumSize(400, 300)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel("Select a saved tab configuration to load as a new tab:"))
+        
+        scroll = QScrollArea()
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+        bg = QButtonGroup(dialog)
+        
+        for i, cfg in enumerate(saved_tabs):
+            text = f"{cfg.get('name', 'Unknown')} - {cfg.get('brand', '')} on {cfg.get('port', '')} ({cfg.get('timestamp', '')})"
+            rb = QRadioButton(text)
+            if i == 0: rb.setChecked(True)
+            bg.addButton(rb, i)
+            scroll_layout.addWidget(rb)
+            
+        scroll_widget.setLayout(scroll_layout)
+        scroll.setWidget(scroll_widget)
+        scroll.setWidgetResizable(True)
+        layout.addWidget(scroll)
+        
+        btn_layout = QHBoxLayout()
+        btn_load = QPushButton("Load Selected")
+        btn_cancel = QPushButton("Cancel")
+        btn_layout.addWidget(btn_load)
+        btn_layout.addWidget(btn_cancel)
+        layout.addLayout(btn_layout)
+        
+        def do_load():
+            idx = bg.checkedId()
+            if idx >= 0:
+                cfg = saved_tabs[idx]
+                self.app.add_tab_with_settings(cfg.get("name", "New Tab"), cfg.get("brand", ""), cfg.get("port", ""))
+            dialog.accept()
+            
+        btn_load.clicked.connect(do_load)
+        btn_cancel.clicked.connect(dialog.reject)
+        dialog.exec()
 
     def close_tab(self):
         if self.recording:
@@ -1287,6 +1613,11 @@ class MultiBalanceApp(QMainWindow):
         self.action_reorder.triggered.connect(self.open_reorder_dialog)
         
         settings_menu.addSeparator()
+        
+        self.action_global_settings = settings_menu.addAction("Global Saving Settings...")
+        self.action_global_settings.triggered.connect(self.open_global_settings)
+        
+        settings_menu.addSeparator()
         self.action_restart = settings_menu.addAction("🔄 Restart App")
         self.action_restart.triggered.connect(self.restart_app)
         
@@ -1321,10 +1652,24 @@ class MultiBalanceApp(QMainWindow):
             if hasattr(tab, "update_button_text"):
                 tab.update_button_text()
 
-    def toggle_theme(self, checked):
-        self.config["dark_mode"] = checked
+    def toggle_theme(self, checked=None):
+        if checked is not None:
+            self.config["dark_mode"] = checked
+        else:
+            self.config["dark_mode"] = self.action_dark_mode.isChecked()
         self.save_config()
-        theme = "dark" if checked else "light"
+        self.apply_theme()
+        
+    def open_global_settings(self):
+        dialog = GlobalSavingSettingsDialog(self, self.config)
+        if dialog.exec():
+            self.config["global_default_save_folder"] = dialog.ent_folder.text()
+            self.config["global_filename_template"] = dialog.ent_template.text()
+            self.config["global_tokens"] = dialog.get_tokens()
+            self.save_config()
+
+    def apply_theme(self):
+        theme = "dark" if self.config.get("dark_mode", True) else "light"
         QApplication.instance().setStyleSheet(qdarktheme.load_stylesheet(theme))
 
     def open_reorder_dialog(self):
@@ -1372,8 +1717,10 @@ class MultiBalanceApp(QMainWindow):
             self.config["known_balances"] = new_known
 
         try:
-            with open(self.config_path, "w") as f:
+            tmp_path = self.config_path + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=4)
+            os.replace(tmp_path, self.config_path)
         except: pass
 
     def save_connection(self, name, brand, port):
