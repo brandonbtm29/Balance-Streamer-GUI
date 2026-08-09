@@ -160,12 +160,13 @@ class CollapsibleBox(QWidget):
     def set_collapsed(self, collapsed=True):
         self.btn_toggle.setChecked(collapsed)
 
-class ReorderPanelsDialog(QDialog):
-    def __init__(self, app_ref):
-        super().__init__(app_ref)
+class ReorderPanelsWidget(QWidget):
+    def __init__(self, app_ref, parent=None):
+        super().__init__(parent)
         self.app_ref = app_ref
-        self.setWindowTitle("Reorder Panels")
-        self.resize(400, 300)
+        
+        
+        
         layout = QVBoxLayout(self)
         
         lbl = QLabel("Drag and drop to reorder panels. The app will restart when applied.")
@@ -201,11 +202,9 @@ class ReorderPanelsDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_apply = QPushButton("Apply and Restart")
         btn_apply.clicked.connect(self.apply)
-        btn_cancel = QPushButton("Cancel")
-        btn_cancel.clicked.connect(self.reject)
+        
         
         btn_layout.addStretch()
-        btn_layout.addWidget(btn_cancel)
         btn_layout.addWidget(btn_apply)
         layout.addLayout(btn_layout)
         
@@ -215,21 +214,31 @@ class ReorderPanelsDialog(QDialog):
         self.app_ref.config["left_panel_order"] = new_left
         self.app_ref.config["right_panel_order"] = new_right
         self.app_ref.save_config()
-        self.accept()
-class GlobalSavingSettingsDialog(QDialog):
+        pass
+        
+        # Restart the app
+        import sys
+        from PyQt6.QtCore import QProcess
+        from PyQt6.QtWidgets import QApplication
+        
+        QProcess.startDetached(sys.executable, sys.argv)
+        QApplication.instance().quit()
+class GlobalSavingSettingsWidget(QWidget):
     def __init__(self, parent=None, config=None):
         super().__init__(parent)
-        self.setWindowTitle("Global Saving Settings & Metadata")
-        self.setMinimumWidth(600)
-        self.setMinimumHeight(500)
+        
+        
+        
         self.config = config or {}
         
         main_layout = QVBoxLayout(self)
         
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll_content = QWidget()
-        self.scroll_layout = QVBoxLayout(scroll_content)
+        self.tabs = QTabWidget()
+        main_layout.addWidget(self.tabs)
+        
+        # --- TAB 1: General Settings ---
+        tab_general = QWidget()
+        l_general = QVBoxLayout(tab_general)
         
         # Save Folder
         gb_folder = QGroupBox("Global Default Save Folder")
@@ -239,13 +248,36 @@ class GlobalSavingSettingsDialog(QDialog):
         btn_browse.clicked.connect(self.browse_folder)
         l_folder.addWidget(self.ent_folder)
         l_folder.addWidget(btn_browse)
-        self.scroll_layout.addWidget(gb_folder)
+        l_general.addWidget(gb_folder)
         
-        # Tokens
-        gb_tokens = QGroupBox("Global Metadata Tokens")
-        self.layout_tokens = QVBoxLayout(gb_tokens)
-        self.token_rows = []
+        # Template
+        gb_temp = QGroupBox("Global Filename Template")
+        l_temp = QVBoxLayout(gb_temp)
+        
+        form_layout = QFormLayout()
+        self.ent_template = QLineEdit(self.config.get("global_filename_template", "<Tab Name>_<Date>_<Time>"))
+        form_layout.addRow("Filename Format:", self.ent_template)
+        l_temp.addLayout(form_layout)
+        
+        l_temp.addWidget(QLabel("Click a token below to insert it at the cursor position:"))
+        
         self.grid_buttons = QGridLayout()
+        l_temp.addLayout(self.grid_buttons)
+        l_general.addWidget(gb_temp)
+        l_general.addStretch()
+        
+        self.tabs.addTab(tab_general, "General & Template")
+        
+        # --- TAB 2: Metadata Tokens ---
+        tab_tokens = QWidget()
+        l_tokens_wrapper = QVBoxLayout(tab_tokens)
+        
+        scroll_tokens = QScrollArea()
+        scroll_tokens.setWidgetResizable(True)
+        scroll_content = QWidget()
+        
+        self.layout_tokens = QVBoxLayout(scroll_content)
+        self.token_rows = []
         self.token_button_refs = []
         
         btn_add_token = QPushButton("+ Add Custom Token")
@@ -262,34 +294,32 @@ class GlobalSavingSettingsDialog(QDialog):
         for t in global_tokens:
             self.add_token_row(t.get("name", ""), t.get("value", ""))
             
-        self.scroll_layout.addWidget(gb_tokens)
+        scroll_tokens.setWidget(scroll_content)
+        l_tokens_wrapper.addWidget(scroll_tokens)
         
-        # Template
-        gb_temp = QGroupBox("Global Filename Template")
-        l_temp = QVBoxLayout(gb_temp)
-        l_temp.addWidget(QLabel("Click a token below to insert it at the cursor position:"))
-        self.ent_template = QLineEdit(self.config.get("global_filename_template", "<Tab Name>_<Date>_<Time>"))
-        l_temp.addWidget(self.ent_template)
-        
-        l_temp.addLayout(self.grid_buttons)
+        self.tabs.addTab(tab_tokens, "Metadata Tokens")
         self.refresh_token_buttons()
-        self.scroll_layout.addWidget(gb_temp)
-        
-        self.scroll_layout.addStretch()
-        scroll.setWidget(scroll_content)
-        main_layout.addWidget(scroll)
         
         # Buttons
         btn_layout = QHBoxLayout()
         btn_ok = QPushButton("Save Globally")
-        btn_cancel = QPushButton("Cancel")
+        
         btn_layout.addWidget(btn_ok)
-        btn_layout.addWidget(btn_cancel)
         main_layout.addLayout(btn_layout)
         
-        btn_ok.clicked.connect(self.accept)
-        btn_cancel.clicked.connect(self.reject)
+        btn_ok.clicked.connect(self.apply_settings)
         
+        
+    def apply_settings(self):
+        self.config["global_default_save_folder"] = self.ent_folder.text()
+        self.config["global_filename_template"] = self.ent_template.text()
+        self.config["global_tokens"] = self.get_tokens()
+        if hasattr(self.parent(), 'app_ref'):
+            self.parent().app_ref.save_config()
+            for tab in self.parent().app_ref.tab_objects:
+                if hasattr(tab, 'refresh_tokens'):
+                    tab.refresh_tokens()
+
     def browse_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Save Folder", self.ent_folder.text())
         if folder: self.ent_folder.setText(folder)
@@ -327,6 +357,8 @@ class GlobalSavingSettingsDialog(QDialog):
         if row_data in self.token_rows:
             self.token_rows.remove(row_data)
         self.layout_tokens.removeWidget(row_widget)
+        row_widget.hide()
+        row_widget.setParent(None)
         row_widget.deleteLater()
         self.refresh_token_buttons()
         
@@ -334,6 +366,8 @@ class GlobalSavingSettingsDialog(QDialog):
         while self.grid_buttons.count():
             item = self.grid_buttons.takeAt(0)
             if item.widget():
+                item.widget().hide()
+                item.widget().setParent(None)
                 item.widget().deleteLater()
         
         self.token_button_refs = []
@@ -356,6 +390,78 @@ class GlobalSavingSettingsDialog(QDialog):
                 
     def get_tokens(self):
         return [{"name": n.text(), "value": v.text()} for _, n, v in self.token_rows if n.text().strip()]
+
+
+class SettingsTab(QWidget):
+    def __init__(self, app_ref, parent=None):
+        super().__init__(parent)
+        self.app_ref = app_ref
+        self.tab_name = "Settings"
+        
+        main_layout = QVBoxLayout(self)
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        
+        # 1. Application Settings
+        gb_app = QGroupBox("Application Settings")
+        l_app = QVBoxLayout(gb_app)
+        
+        self.chk_btn_text = QCheckBox("Show Button Text")
+        self.chk_btn_text.setChecked(self.app_ref.config.get("show_button_text", False))
+        self.chk_btn_text.clicked.connect(self.toggle_button_text)
+        l_app.addWidget(self.chk_btn_text)
+        
+        self.chk_dark_mode = QCheckBox("Dark Mode")
+        self.chk_dark_mode.setChecked(self.app_ref.config.get("dark_mode", True))
+        self.chk_dark_mode.clicked.connect(self.toggle_theme)
+        l_app.addWidget(self.chk_dark_mode)
+        
+        btn_restart = QPushButton("Restart Application")
+        btn_restart.clicked.connect(self.app_ref.restart_app)
+        l_app.addWidget(btn_restart)
+        scroll_layout.addWidget(gb_app)
+        
+        # 2. Panel Management
+        gb_panels = QGroupBox("Panel Management")
+        l_panels = QVBoxLayout(gb_panels)
+        self.panel_widget = ReorderPanelsWidget(self.app_ref)
+        l_panels.addWidget(self.panel_widget)
+        scroll_layout.addWidget(gb_panels)
+        
+        # 3. Global Settings & Metadata
+        gb_global = QGroupBox("Global Settings & Metadata")
+        l_global = QVBoxLayout(gb_global)
+        self.global_widget = GlobalSavingSettingsWidget(self, self.app_ref.config)
+        l_global.addWidget(self.global_widget)
+        scroll_layout.addWidget(gb_global)
+        
+        # 4. Help
+        gb_help = QGroupBox("Help")
+        l_help = QVBoxLayout(gb_help)
+        btn_help = QPushButton("About Flow Rate Engine")
+        btn_help.clicked.connect(self.app_ref.show_help_dialog)
+        l_help.addWidget(btn_help)
+        scroll_layout.addWidget(gb_help)
+        
+        scroll_layout.addStretch()
+        
+        scroll.setWidget(scroll_content)
+        main_layout.addWidget(scroll)
+        
+    def toggle_button_text(self, checked):
+        self.app_ref.config["show_button_text"] = checked
+        self.app_ref.save_config()
+        for tab in self.app_ref.tab_objects:
+            if hasattr(tab, 'update_gui_components'):
+                tab.update_gui_components()
+                
+    def toggle_theme(self, checked):
+        self.app_ref.config["dark_mode"] = checked
+        self.app_ref.save_config()
+        self.app_ref.apply_theme()
 
 class BalanceTab(QWidget):
     def __init__(self, parent=None, app=None, tab_name="Balance"):
@@ -740,6 +846,20 @@ class BalanceTab(QWidget):
         
         right_layout.addWidget(gb_save)
         
+        # Metadata Tokens
+        self.gb_tokens = QGroupBox("Metadata Tokens")
+        self.tokens_outer_layout = QVBoxLayout(self.gb_tokens)
+        self.l_tokens = QFormLayout()
+        self.tokens_outer_layout.addLayout(self.l_tokens)
+        
+        self.btn_add_tab_token = QPushButton("+ Add Custom Token")
+        self.btn_add_tab_token.clicked.connect(self.request_add_custom_token)
+        self.tokens_outer_layout.addWidget(self.btn_add_tab_token)
+        
+        self.token_inputs = {}
+        right_layout.addWidget(self.gb_tokens)
+        self.refresh_tokens()
+        
         # Notes
         gb_notes = QGroupBox("Experiment Notes")
         l_notes = QVBoxLayout(gb_notes)
@@ -759,6 +879,58 @@ class BalanceTab(QWidget):
         self.splitter.addWidget(right_scroll)
         
         self.splitter.setSizes([300, 600, 300])
+
+    def refresh_tokens(self):
+        old_values = {k: v.text() for k, v in getattr(self, 'token_inputs', {}).items()}
+        
+        while self.l_tokens.rowCount() > 0:
+            self.l_tokens.removeRow(0)
+            
+        self.token_inputs = {}
+        
+        global_tokens = self.app.config.get("global_tokens", []) if self.app else []
+        global_names = []
+        for t in global_tokens:
+            name = t.get("name", "").strip()
+            if name:
+                global_names.append(name)
+                ent = QLineEdit()
+                if name in old_values:
+                    ent.setText(old_values[name])
+                else:
+                    ent.setText(t.get("value", ""))
+                self.l_tokens.addRow(name + ":", ent)
+                self.token_inputs[name] = ent
+                
+        for name, val in old_values.items():
+            if name not in global_names:
+                self.add_custom_token_ui(name, val)
+
+    def request_add_custom_token(self):
+        from PyQt6.QtWidgets import QInputDialog
+        name, ok = QInputDialog.getText(self, "Add Custom Token", "Token Name:")
+        if ok and name.strip():
+            name = name.strip()
+            if name in self.token_inputs:
+                QMessageBox.warning(self, "Warning", "Token already exists!")
+                return
+            self.add_custom_token_ui(name, "")
+
+    def add_custom_token_ui(self, name, value):
+        ent = QLineEdit(value)
+        row_layout = QHBoxLayout()
+        row_layout.addWidget(ent)
+        btn_del = QPushButton("-")
+        btn_del.setFixedWidth(20)
+        btn_del.clicked.connect(lambda _, n=name: self.remove_custom_token(n))
+        row_layout.addWidget(btn_del)
+        self.l_tokens.addRow(name + ":", row_layout)
+        self.token_inputs[name] = ent
+
+    def remove_custom_token(self, name):
+        if name in self.token_inputs:
+            self.token_inputs.pop(name)
+            self.refresh_tokens()
 
     def refresh_com_ports(self):
         ports = [p.device for p in serial.tools.list_ports.comports()]
@@ -1259,9 +1431,13 @@ class BalanceTab(QWidget):
         s = s.replace("<Time>", datetime.datetime.now().strftime("%H%M%S"))
         global_tokens = self.app.config.get("global_tokens", []) if self.app else []
         for t in global_tokens:
-            n = t.get("name", "").strip()
-            if n:
-                s = s.replace(f"<{n}>", t.get("value", ""))
+            name = t.get("name", "").strip()
+            if name:
+                if hasattr(self, 'token_inputs') and name in self.token_inputs:
+                    val = self.token_inputs[name].text()
+                else:
+                    val = t.get("value", "")
+                s = s.replace(f"<{name}>", val)
         return s
 
     def save_excel(self, auto=False):
@@ -1475,8 +1651,17 @@ class BalanceTab(QWidget):
             "use_global_template": self.chk_use_global_template.isChecked(),
             "save_template": self.ent_save_template.text(),
             "autosave_mode": self.combo_autosave.currentText(),
-            "autosave_min": self.ent_autosave_min.text()
+            "autosave_min": self.ent_autosave_min.text(),
+            "xmin": self.ent_xmin.text(),
+            "xmax": self.ent_xmax.text(),
+            "ymin": self.ent_ymin.text(),
+            "ymax": self.ent_ymax.text(),
+            "flowmin": self.ent_flowmin.text(),
+            "flowmax": self.ent_flowmax.text()
         }
+        
+        if hasattr(self, 'token_inputs'):
+            kb[self.tab_name]["settings"]["tab_tokens"] = {k: v.text() for k, v in self.token_inputs.items()}
 
     def load_tab_settings(self):
         if not self.app: return
@@ -1499,6 +1684,13 @@ class BalanceTab(QWidget):
             if "experiment_notes" in settings: self.txt_notes.setText(settings["experiment_notes"])
             if "save_folder" in settings: self.ent_save_folder.setText(settings["save_folder"])
             
+            if "xmin" in settings: self.ent_xmin.setText(settings["xmin"])
+            if "xmax" in settings: self.ent_xmax.setText(settings["xmax"])
+            if "ymin" in settings: self.ent_ymin.setText(settings["ymin"])
+            if "ymax" in settings: self.ent_ymax.setText(settings["ymax"])
+            if "flowmin" in settings: self.ent_flowmin.setText(settings["flowmin"])
+            if "flowmax" in settings: self.ent_flowmax.setText(settings["flowmax"])
+            
             if "use_global_template" in settings:
                 self.chk_use_global_template.setChecked(settings["use_global_template"])
             if "save_template" in settings:
@@ -1506,15 +1698,63 @@ class BalanceTab(QWidget):
                 
             if "autosave_mode" in settings: self.combo_autosave.setCurrentText(settings["autosave_mode"])
             if "autosave_min" in settings: self.ent_autosave_min.setText(settings["autosave_min"])
+            
+            if "tab_tokens" in settings and hasattr(self, 'token_inputs'):
+                for name, val in settings["tab_tokens"].items():
+                    if name in self.token_inputs:
+                        self.token_inputs[name].setText(val)
 
     def save_tab_config(self):
+        settings_dict = {
+            "interval": self.ent_interval.text(),
+            "savgol_win": self.ent_savgol_win.text(),
+            "savgol_poly": self.ent_savgol_poly.text(),
+            "filter_type": self.combo_filter.currentText(),
+            "filter_param": self.ent_filter_param.text(),
+            "rpm": self.ent_rpm.text(),
+            "rollers": self.ent_rollers.text(),
+            "do_auto_scale_x": self.chk_auto_x.isChecked(),
+            "do_auto_scale_y_mass": self.chk_auto_y_mass.isChecked(),
+            "do_auto_scale_y_flow": self.chk_auto_y_flow.isChecked(),
+            "do_auto_stop": self.chk_auto_stop.isChecked(),
+            "auto_stop_min": self.ent_auto_stop_min.text(),
+            "auto_stop_thresh": self.ent_auto_stop_thresh.text(),
+            "experiment_notes": self.txt_notes.toPlainText(),
+            "save_folder": self.ent_save_folder.text(),
+            "use_global_template": self.chk_use_global_template.isChecked(),
+            "save_template": self.ent_save_template.text(),
+            "autosave_mode": self.combo_autosave.currentText(),
+            "autosave_min": self.ent_autosave_min.text(),
+            "xmin": self.ent_xmin.text(),
+            "xmax": self.ent_xmax.text(),
+            "ymin": self.ent_ymin.text(),
+            "ymax": self.ent_ymax.text(),
+            "flowmin": self.ent_flowmin.text(),
+            "flowmax": self.ent_flowmax.text()
+        }
+        
+        if hasattr(self, 'token_inputs'):
+            kb[self.tab_name]["settings"]["tab_tokens"] = {k: v.text() for k, v in self.token_inputs.items()}
+        if hasattr(self, 'token_inputs'):
+            settings_dict["tab_tokens"] = {k: v.text() for k, v in self.token_inputs.items()}
+            
         cfg = {
             "name": self.tab_name,
             "brand": self.combo_brand.currentText(),
             "port": self.combo_com.currentText(),
-            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "settings": settings_dict
         }
-        self.app.config["saved_tabs"].append(cfg)
+        saved = self.app.config.setdefault("saved_tabs", [])
+        found = False
+        for i, s in enumerate(saved):
+            if s.get("name") == self.tab_name:
+                saved[i] = cfg
+                found = True
+                break
+        if not found:
+            saved.append(cfg)
+            
         self.app.save_config()
         QMessageBox.information(self, "Success", "Tab Configuration Saved.")
 
@@ -1549,19 +1789,38 @@ class BalanceTab(QWidget):
         
         btn_layout = QHBoxLayout()
         btn_load = QPushButton("Load Selected")
-        btn_cancel = QPushButton("Cancel")
+        btn_delete = QPushButton("Delete Selected")
+        btn_delete.setStyleSheet("background-color: #e74c3c; color: white;")
+        
         btn_layout.addWidget(btn_load)
-        btn_layout.addWidget(btn_cancel)
+        btn_layout.addWidget(btn_delete)
         layout.addLayout(btn_layout)
         
         def do_load():
             idx = bg.checkedId()
             if idx >= 0:
                 cfg = saved_tabs[idx]
+                if "settings" in cfg:
+                    kb = self.app.config.setdefault("known_balances", {})
+                    kb[cfg.get("name", "New Tab")] = {
+                        "brand": cfg.get("brand", ""),
+                        "port": cfg.get("port", ""),
+                        "settings": cfg["settings"],
+                        "unsaved": False
+                    }
                 self.app.add_tab_with_settings(cfg.get("name", "New Tab"), cfg.get("brand", ""), cfg.get("port", ""))
             dialog.accept()
             
+        def do_delete():
+            idx = bg.checkedId()
+            if idx >= 0:
+                del saved_tabs[idx]
+                self.app.save_config()
+                dialog.accept()
+                self.load_tab_config_dialog()
+            
         btn_load.clicked.connect(do_load)
+        btn_delete.clicked.connect(do_delete)
         btn_cancel.clicked.connect(dialog.reject)
         dialog.exec()
 
@@ -1596,35 +1855,6 @@ class MultiBalanceApp(QMainWindow):
                     self.config.update(json.load(f))
             except: pass
             
-        # Menu Bar
-        menu = self.menuBar()
-        settings_menu = menu.addMenu("Settings")
-        self.action_show_text = settings_menu.addAction("Show Button Text")
-        self.action_show_text.setCheckable(True)
-        self.action_show_text.setChecked(self.config.get("show_button_text", False))
-        self.action_show_text.triggered.connect(self.toggle_button_text)
-        
-        self.action_dark_mode = settings_menu.addAction("Dark Mode")
-        self.action_dark_mode.setCheckable(True)
-        self.action_dark_mode.setChecked(self.config.get("dark_mode", True))
-        self.action_dark_mode.triggered.connect(self.toggle_theme)
-        
-        self.action_reorder = settings_menu.addAction("Reorder Panels...")
-        self.action_reorder.triggered.connect(self.open_reorder_dialog)
-        
-        settings_menu.addSeparator()
-        
-        self.action_global_settings = settings_menu.addAction("Global Saving Settings...")
-        self.action_global_settings.triggered.connect(self.open_global_settings)
-        
-        settings_menu.addSeparator()
-        self.action_restart = settings_menu.addAction("🔄 Restart App")
-        self.action_restart.triggered.connect(self.restart_app)
-        
-        help_menu = menu.addMenu("Help")
-        self.action_help_engine = help_menu.addAction("About Flow Rate Engine")
-        self.action_help_engine.triggered.connect(self.show_help_dialog)
-        
         # Main Layout
         central = QWidget()
         self.setCentralWidget(central)
@@ -1660,21 +1890,9 @@ class MultiBalanceApp(QMainWindow):
         self.save_config()
         self.apply_theme()
         
-    def open_global_settings(self):
-        dialog = GlobalSavingSettingsDialog(self, self.config)
-        if dialog.exec():
-            self.config["global_default_save_folder"] = dialog.ent_folder.text()
-            self.config["global_filename_template"] = dialog.ent_template.text()
-            self.config["global_tokens"] = dialog.get_tokens()
-            self.save_config()
-
     def apply_theme(self):
         theme = "dark" if self.config.get("dark_mode", True) else "light"
         QApplication.instance().setStyleSheet(qdarktheme.load_stylesheet(theme))
-
-    def open_reorder_dialog(self):
-        dlg = ReorderPanelsDialog(self)
-        dlg.exec()
 
     def show_help_dialog(self):
         msg = QMessageBox(self)
@@ -1715,6 +1933,9 @@ class MultiBalanceApp(QMainWindow):
                 if name not in new_known:
                     new_known[name] = details
             self.config["known_balances"] = new_known
+
+        settings_tab = SettingsTab(self)
+        self.tabs.addTab(settings_tab, "Settings")
 
         try:
             tmp_path = self.config_path + ".tmp"
