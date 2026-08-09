@@ -1875,6 +1875,10 @@ class MultiBalanceApp(QMainWindow):
         if not has_known:
             self.add_tab()
 
+        settings_tab = SettingsTab(self)
+        self.tabs.insertTab(0, settings_tab, "Settings")
+        self.tabs.setCurrentIndex(1) # Default to showing the first balance tab instead of settings
+
     def toggle_button_text(self, checked):
         self.config["show_button_text"] = checked
         self.save_config()
@@ -1933,9 +1937,6 @@ class MultiBalanceApp(QMainWindow):
                 if name not in new_known:
                     new_known[name] = details
             self.config["known_balances"] = new_known
-
-        settings_tab = SettingsTab(self)
-        self.tabs.addTab(settings_tab, "Settings")
 
         try:
             tmp_path = self.config_path + ".tmp"
