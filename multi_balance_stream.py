@@ -1671,7 +1671,10 @@ class BalanceTab(QWidget):
             "ymin": self.ent_ymin.text(),
             "ymax": self.ent_ymax.text(),
             "flowmin": self.ent_flowmin.text(),
-            "flowmax": self.ent_flowmax.text()
+            "flowmax": self.ent_flowmax.text(),
+            "splitter_state": self.splitter.saveState().toHex().data().decode(),
+            "mid_splitter_state": self.mid_splitter.saveState().toHex().data().decode(),
+            "col_widths": [self.table.columnWidth(i) for i in range(self.table.columnCount())]
         }
         
         if hasattr(self, 'token_inputs'):
@@ -1712,6 +1715,17 @@ class BalanceTab(QWidget):
                 
             if "autosave_mode" in settings: self.combo_autosave.setCurrentText(settings["autosave_mode"])
             if "autosave_min" in settings: self.ent_autosave_min.setText(settings["autosave_min"])
+            
+            if "splitter_state" in settings:
+                from PyQt6.QtCore import QByteArray
+                self.splitter.restoreState(QByteArray.fromHex(settings["splitter_state"].encode()))
+            if "mid_splitter_state" in settings:
+                from PyQt6.QtCore import QByteArray
+                self.mid_splitter.restoreState(QByteArray.fromHex(settings["mid_splitter_state"].encode()))
+            if "col_widths" in settings:
+                for i, w in enumerate(settings["col_widths"]):
+                    if i < self.table.columnCount():
+                        self.table.setColumnWidth(i, w)
             
             if "tab_tokens" in settings and hasattr(self, 'token_inputs'):
                 for name, val in settings["tab_tokens"].items():
