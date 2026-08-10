@@ -244,8 +244,10 @@ class GlobalSavingSettingsWidget(QWidget):
         
         # Save Folder
         gb_folder = CollapsibleBox("Global Default Save Folder")
-        l_folder = QHBoxLayout(gb_folder)
-        self.ent_folder = QLineEdit(self.config.get("global_default_save_folder", "Data"))
+        l_folder = QHBoxLayout()
+        gb_folder.setLayout(l_folder)
+        self.ent_folder = QTextEdit(self.config.get("global_default_save_folder", "Data"))
+        self.ent_folder.setFixedHeight(45)
         btn_browse = QPushButton("Browse")
         btn_browse.clicked.connect(self.browse_folder)
         l_folder.addWidget(self.ent_folder)
@@ -323,7 +325,7 @@ class GlobalSavingSettingsWidget(QWidget):
         
         
     def apply_settings(self):
-        self.config["global_default_save_folder"] = self.ent_folder.text()
+        self.config["global_default_save_folder"] = self.ent_folder.toPlainText().replace("\n", "").strip()
         self.config["global_filename_template"] = self.ent_template.text()
         self.config["global_tokens"] = self.get_tokens()
         if hasattr(self.parent(), 'app_ref'):
@@ -333,8 +335,8 @@ class GlobalSavingSettingsWidget(QWidget):
                     tab.refresh_tokens()
 
     def browse_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Select Save Folder", self.ent_folder.text())
-        if folder: self.ent_folder.setText(folder)
+        folder = QFileDialog.getExistingDirectory(self, "Select Save Folder", self.ent_folder.toPlainText().replace("\n", "").strip())
+        if folder: self.ent_folder.setPlainText(folder)
         
     def add_token_row(self, name, value):
         row_widget = QWidget()
@@ -874,8 +876,8 @@ class BalanceTab(QWidget):
         l_save.addWidget(QLabel("Save Folder Path:"))
         folder_layout = QHBoxLayout()
         default_folder = self.app.config.get("global_default_save_folder", "Data") if self.app else "Data"
-        self.ent_save_folder = QLineEdit(default_folder)
-        self.ent_save_folder.setMinimumHeight(35)
+        self.ent_save_folder = QTextEdit(default_folder)
+        self.ent_save_folder.setFixedHeight(45)
         btn_browse = QPushButton("Browse")
         btn_browse.setMinimumHeight(35)
         btn_browse.clicked.connect(self.browse_save_folder)
@@ -929,7 +931,8 @@ class BalanceTab(QWidget):
         
         # Metadata Tokens
         self.gb_tokens = CollapsibleBox("Metadata Tokens")
-        self.tokens_outer_layout = QVBoxLayout(self.gb_tokens)
+        self.tokens_outer_layout = QVBoxLayout()
+        self.gb_tokens.setLayout(self.tokens_outer_layout)
         self.l_tokens = QFormLayout()
         self.tokens_outer_layout.addLayout(self.l_tokens)
         
@@ -1528,9 +1531,9 @@ class BalanceTab(QWidget):
         except: pass
 
     def browse_save_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Select Save Folder", self.ent_save_folder.text())
+        folder = QFileDialog.getExistingDirectory(self, "Select Save Folder", self.ent_save_folder.toPlainText().replace("\n", "").strip())
         if folder:
-            self.ent_save_folder.setText(folder)
+            self.ent_save_folder.setPlainText(folder)
 
     def toggle_autosave_interval(self):
         self.ent_autosave_min.setEnabled(self.combo_autosave.currentText() == "Every X Minutes")
@@ -1580,7 +1583,7 @@ class BalanceTab(QWidget):
         filename = self.get_resolved_string(template)
         if not filename.endswith(".xlsx"): filename += ".xlsx"
         
-        save_dir = self.ent_save_folder.text().strip()
+        save_dir = self.ent_save_folder.toPlainText().replace("\n", "").strip().strip()
         if not save_dir: save_dir = "Data"
         
         os.makedirs(save_dir, exist_ok=True)
@@ -1774,7 +1777,7 @@ class BalanceTab(QWidget):
             "auto_stop_min": self.ent_auto_stop_min.text(),
             "auto_stop_thresh": self.ent_auto_stop_thresh.text(),
             "experiment_notes": self.txt_notes.toPlainText(),
-            "save_folder": self.ent_save_folder.text(),
+            "save_folder": self.ent_save_folder.toPlainText().replace("\n", "").strip(),
             "use_global_template": self.chk_use_global_template.isChecked(),
             "save_template": self.ent_save_template.text(),
             "autosave_mode": self.combo_autosave.currentText(),
@@ -1812,7 +1815,7 @@ class BalanceTab(QWidget):
             if "auto_stop_min" in settings: self.ent_auto_stop_min.setText(settings["auto_stop_min"])
             if "auto_stop_thresh" in settings: self.ent_auto_stop_thresh.setText(settings["auto_stop_thresh"])
             if "experiment_notes" in settings: self.txt_notes.setText(settings["experiment_notes"])
-            if "save_folder" in settings: self.ent_save_folder.setText(settings["save_folder"])
+            if "save_folder" in settings: self.ent_save_folder.setPlainText(settings["save_folder"])
             
             if "xmin" in settings: self.ent_xmin.setText(settings["xmin"])
             if "xmax" in settings: self.ent_xmax.setText(settings["xmax"])
@@ -1863,7 +1866,7 @@ class BalanceTab(QWidget):
             "auto_stop_min": self.ent_auto_stop_min.text(),
             "auto_stop_thresh": self.ent_auto_stop_thresh.text(),
             "experiment_notes": self.txt_notes.toPlainText(),
-            "save_folder": self.ent_save_folder.text(),
+            "save_folder": self.ent_save_folder.toPlainText().replace("\n", "").strip(),
             "use_global_template": self.chk_use_global_template.isChecked(),
             "save_template": self.ent_save_template.text(),
             "autosave_mode": self.combo_autosave.currentText(),
