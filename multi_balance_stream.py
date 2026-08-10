@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QMessageBox, QFileDialog, QTabWidget, QDialog, 
                              QGridLayout, QSplitter, QScrollArea, QTableWidget, 
                              QTableWidgetItem, QAbstractItemView, QHeaderView, QListWidget,
-                             QButtonGroup, QRadioButton, QFormLayout, QStackedWidget)
+                             QButtonGroup, QRadioButton, QFormLayout, QStackedWidget, QTextBrowser)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread
 from PyQt6.QtGui import QFont, QColor
 
@@ -471,10 +471,31 @@ class SettingsTab(QWidget):
         # 4. Help
         page_help = QWidget()
         l_help = QVBoxLayout(page_help)
-        btn_help = QPushButton("About Flow Rate Engine")
-        btn_help.clicked.connect(self.app_ref.show_help_dialog)
-        l_help.addWidget(btn_help)
-        l_help.addStretch()
+        
+        tb = QTextBrowser()
+        tb.setOpenExternalLinks(True)
+        tb.setHtml("""
+        <h2 style='color: #3498db;'>Hardware Setup: Continuous Print Mode</h2>
+        <p>For the Balance Streamer to read live data over USB/RS232, your balance must be configured to output data continuously.</p>
+        <ul>
+            <li><b>Ohaus:</b> Go to Menu > Print > Auto Print > Continuous. Set baud rate to 9600. (<a href="https://dmx.ohaus.com/WorkArea/showcontent.aspx?id=4294974227">Ohaus Manual</a>)</li>
+            <li><b>Mettler Toledo:</b> Go to Settings > System > Peripherals > Host. Set Send Mode to "Continuous". (<a href="https://www.mt.com/us/en/home/library/operating-instructions/laboratory-weighing/MS-TS_OI.html">Mettler Manual</a>)</li>
+            <li><b>Adam Equipment:</b> Go to RS-232 Menu > PC > Continuous. (<a href="https://www.adamequipment.com/media/docs/Print/EN/Manuals/Nimbus_Manual.pdf">Adam Manual</a>)</li>
+            <li><b>Generic / Other:</b> Refer to your manufacturer's manual. Look for settings named "Auto-Print", "Continuous Send", or "Stream Data".</li>
+        </ul>
+        <br>
+        <h2 style='color: #3498db;'>Derivative Engine</h2>
+        <p>This application uses a <b>Savitzky-Golay (SavGol)</b> filter to compute the flow rate (derivative) from the raw mass data. Savitzky-Golay fits a local polynomial to the data points, which smooths out high-frequency noise while calculating a highly accurate derivative.</p>
+        <h2 style='color: #3498db;'>Secondary Smoothing</h2>
+        <p>Because flow rate is a derivative, it can be inherently noisy. Secondary Smoothing applies a final low-pass filter to the calculated flow rate for better visualization.</p>
+        <ul>
+            <li><b>Mean / Median:</b> Standard moving window averages.</li>
+            <li><b>EMA:</b> Exponential Moving Average, gives more weight to recent data.</li>
+            <li><b>Butterworth:</b> A sophisticated signal processing filter for extremely smooth lines.</li>
+            <li><b>Adaptive:</b> Automatically adjusts its window size based on your pump RPM and roller count.</li>
+        </ul>
+        """)
+        l_help.addWidget(tb)
         
         self.sidebar.addItem("❓ Help & About")
         self.stack.addWidget(page_help)
