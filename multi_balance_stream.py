@@ -1425,6 +1425,7 @@ class BalanceTab(QWidget):
 
     def get_resolved_string(self, template_str):
         if not template_str: return ""
+        import re
         s = template_str
         s = s.replace("<Tab Name>", self.tab_name)
         s = s.replace("<Date>", datetime.datetime.now().strftime("%Y-%m-%d"))
@@ -1438,6 +1439,8 @@ class BalanceTab(QWidget):
                 else:
                     val = t.get("value", "")
                 s = s.replace(f"<{name}>", val)
+        s = re.sub(r'<[^>]+>', '', s)
+        s = re.sub(r'[<>:"/\\|?*]', '_', s)
         return s
 
     def save_excel(self, auto=False):
