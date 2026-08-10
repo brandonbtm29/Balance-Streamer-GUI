@@ -1426,10 +1426,17 @@ class BalanceTab(QWidget):
     def get_resolved_string(self, template_str):
         if not template_str: return ""
         import re
+        import datetime
         s = template_str
         s = s.replace("<Tab Name>", self.tab_name)
-        s = s.replace("<Date>", datetime.datetime.now().strftime("%Y-%m-%d"))
-        s = s.replace("<Time>", datetime.datetime.now().strftime("%H%M%S"))
+        
+        now = datetime.datetime.now()
+        start_dt = getattr(self, 'session_start_time', None) or now
+        
+        s = s.replace("<Start Date>", start_dt.strftime("%Y-%m-%d"))
+        s = s.replace("<Start Time>", start_dt.strftime("%H%M%S"))
+        s = s.replace("<Date>", now.strftime("%Y-%m-%d"))
+        s = s.replace("<Time>", now.strftime("%H%M%S"))
         global_tokens = self.app.config.get("global_tokens", []) if self.app else []
         for t in global_tokens:
             name = t.get("name", "").strip()
