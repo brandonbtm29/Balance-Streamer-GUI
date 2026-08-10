@@ -767,6 +767,7 @@ class BalanceTab(QWidget):
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         right_scroll = QScrollArea()
+        right_scroll.setMinimumWidth(360)
         right_scroll.setWidgetResizable(True)
         right_scroll.setWidget(right_widget)
         
@@ -1986,6 +1987,10 @@ class MultiBalanceApp(QMainWindow):
         settings_tab = SettingsTab(self)
         self.tabs.insertTab(0, settings_tab, "Settings")
         self.tabs.setCurrentIndex(1) # Default to showing the first balance tab instead of settings
+        
+        if "app_geometry" in self.config:
+            from PyQt6.QtCore import QByteArray
+            self.restoreGeometry(QByteArray.fromHex(self.config["app_geometry"].encode()))
 
     def toggle_button_text(self, checked):
         self.config["show_button_text"] = checked
@@ -2115,6 +2120,7 @@ class MultiBalanceApp(QMainWindow):
             tab.deleteLater()
 
     def closeEvent(self, event):
+        self.config["app_geometry"] = self.saveGeometry().toHex().data().decode()
         for tab in self.tab_objects:
             if hasattr(tab, 'save_tab_settings'): tab.save_tab_settings()
             if tab.serial_thread: tab.disconnect_serial()
