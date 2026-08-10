@@ -15,6 +15,7 @@ def build():
     
     cmd = [
         "pyinstaller",
+        "-y",
         "--noconsole",
         "--onedir", # Large scipy/matplotlib apps run faster in onedir mode, less temp unpacking
         "--name", "Balance_Streamer",

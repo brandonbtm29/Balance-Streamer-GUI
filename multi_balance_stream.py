@@ -1288,6 +1288,10 @@ class BalanceTab(QWidget):
             self.ax_mass.set_title(f"{self.tab_name} - Live Weight Data (PAUSED)", color='black')
             self.btn_record.setStyleSheet("background-color: #2ecc71; color: white; font-weight: bold;")
             self.update_button_text()
+            
+            if self.combo_autosave.currentText() in ["On Auto-Stop", "Every X Minutes"]:
+                self.save_excel(auto=True)
+                self.txt_notes.append("[Auto-Save] Data saved automatically upon pause.")
         self.canvas.draw_idle()
 
     def tare_balance(self):
