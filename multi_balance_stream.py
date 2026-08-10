@@ -372,7 +372,7 @@ class GlobalSavingSettingsWidget(QWidget):
         
         self.token_button_refs = []
             
-        tokens = ["Tab Name", "Date", "Time"]
+        tokens = ["Tab Name", "Date", "Time", "Start Date", "Start Time"]
         for _, ent_name, _ in self.token_rows:
             n = ent_name.text().strip()
             if n and n not in tokens: tokens.append(n)
