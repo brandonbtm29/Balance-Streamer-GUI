@@ -523,6 +523,7 @@ class BalanceTab(QWidget):
         self.btn_save_excel.setText("📊 Save to Excel" if show_text else "📊")
         self.btn_tare.setText("⚖ Tare Balance" if show_text else "⚖")
         self.btn_save_graph.setText("🖼 Save Graph PNG" if show_text else "🖼")
+        self.btn_recover.setText("↺ Recover Session" if show_text else "↺")
 
     def build_ui(self):
         main_layout = QVBoxLayout(self)
@@ -558,6 +559,11 @@ class BalanceTab(QWidget):
         self.top_action_layout.addWidget(self.btn_save_excel)
         self.top_action_layout.addWidget(self.btn_tare)
         self.top_action_layout.addWidget(self.btn_save_graph)
+        self.btn_recover = QPushButton()
+        self.btn_recover.setStyleSheet("background-color: #8e44ad; color: white; font-weight: bold;")
+        self.btn_recover.clicked.connect(self.prompt_session_recovery)
+        self.btn_recover.setToolTip("Recover Session")
+        self.top_action_layout.addWidget(self.btn_recover)
         self.top_action_layout.addStretch()
         
         main_layout.addLayout(self.top_action_layout)
@@ -888,10 +894,6 @@ class BalanceTab(QWidget):
         l_notes.addWidget(self.txt_notes)
         right_layout.addWidget(gb_notes)
         
-        self.btn_recover = QPushButton("Recover Session")
-        self.btn_recover.setStyleSheet("background-color: #8e44ad; color: white;")
-        self.btn_recover.clicked.connect(self.prompt_session_recovery)
-        right_layout.addWidget(self.btn_recover)
         
         # btn_save_tab moved to Tab Management
         
