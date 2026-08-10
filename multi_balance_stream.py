@@ -1465,7 +1465,6 @@ class BalanceTab(QWidget):
             
         filename = self.get_resolved_string(template)
         if not filename.endswith(".xlsx"): filename += ".xlsx"
-        filename = filename.replace(' ', '_')
         
         save_dir = self.ent_save_folder.text().strip()
         if not save_dir: save_dir = "Data"
