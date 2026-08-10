@@ -1788,6 +1788,8 @@ class BalanceTab(QWidget):
                 for name, val in settings["tab_tokens"].items():
                     if name in self.token_inputs:
                         self.token_inputs[name].setText(val)
+                    else:
+                        self.add_custom_token_ui(name, val)
 
     def save_tab_config(self):
         settings_dict = {
