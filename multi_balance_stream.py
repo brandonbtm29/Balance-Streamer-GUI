@@ -147,11 +147,13 @@ class CollapsibleBox(QWidget):
         self.layout.addWidget(self.btn_toggle)
         
         self.content_widget = QWidget()
-        self.content_layout = QVBoxLayout(self.content_widget)
-        self.content_layout.setContentsMargins(5, 5, 5, 5)
         self.layout.addWidget(self.content_widget)
         
         self.title_text = title
+        
+    def setLayout(self, layout):
+        layout.setContentsMargins(5, 5, 5, 5)
+        self.content_widget.setLayout(layout)
         
     def on_toggle(self, checked):
         self.btn_toggle.setText(f"▶ {self.title_text}" if checked else f"▼ {self.title_text}")
@@ -241,7 +243,7 @@ class GlobalSavingSettingsWidget(QWidget):
         l_general = QVBoxLayout(tab_general)
         
         # Save Folder
-        gb_folder = QGroupBox("Global Default Save Folder")
+        gb_folder = CollapsibleBox("Global Default Save Folder")
         l_folder = QHBoxLayout(gb_folder)
         self.ent_folder = QLineEdit(self.config.get("global_default_save_folder", "Data"))
         btn_browse = QPushButton("Browse")
@@ -251,8 +253,9 @@ class GlobalSavingSettingsWidget(QWidget):
         l_general.addWidget(gb_folder)
         
         # Template
-        gb_temp = QGroupBox("Global Filename Template")
-        l_temp = QVBoxLayout(gb_temp)
+        gb_temp = CollapsibleBox("Global Filename Template")
+        l_temp = QVBoxLayout()
+        gb_temp.setLayout(l_temp)
         
         form_layout = QFormLayout()
         self.ent_template = QLineEdit(self.config.get("global_filename_template", "<Tab Name>_<Date>_<Time>"))
@@ -635,7 +638,8 @@ class BalanceTab(QWidget):
 
         # Recording Settings
         gb_rec = CollapsibleBox("Recording Settings")
-        l_rec = gb_rec.content_layout
+        l_rec = QVBoxLayout()
+        gb_rec.setLayout(l_rec)
         self.ent_interval = create_form_row(l_rec, "Interval (s):", "1.0")
         
         self.chk_auto_stop = QCheckBox("Enable Auto-Stop")
@@ -646,14 +650,16 @@ class BalanceTab(QWidget):
         
         # Derivative Engine
         gb_der = CollapsibleBox("Derivative Engine")
-        l_der = gb_der.content_layout
+        l_der = QVBoxLayout()
+        gb_der.setLayout(l_der)
         self.ent_savgol_win = create_form_row(l_der, "SavGol Window:", "5")
         self.ent_savgol_poly = create_form_row(l_der, "SavGol Poly:", "3")
         self.left_panels["Derivative Engine"] = gb_der
         
         # Filtering
         gb_filt = CollapsibleBox("Secondary Smoothing")
-        l_filt = gb_filt.content_layout
+        l_filt = QVBoxLayout()
+        gb_filt.setLayout(l_filt)
         self.combo_filter = QComboBox()
         self.combo_filter.addItems(["Mean", "Median", "EMA", "Butterworth", "Adaptive"])
         self.combo_filter.currentTextChanged.connect(self.on_filter_change)
@@ -674,7 +680,8 @@ class BalanceTab(QWidget):
         # Calibration
         gb_cal = CollapsibleBox("Pump Calibration")
         gb_cal.set_collapsed(True)
-        l_cal = gb_cal.content_layout
+        l_cal = QVBoxLayout()
+        gb_cal.setLayout(l_cal)
         self.ent_rpm = create_form_row(l_cal, "Pump RPM:", "30")
         self.ent_rollers = create_form_row(l_cal, "Rollers:", "3")
         self.btn_log_cal = QPushButton("Log Calibration Point")
@@ -686,7 +693,8 @@ class BalanceTab(QWidget):
         # Axis Limits
         gb_axis = CollapsibleBox("Axis Limits")
         gb_axis.set_collapsed(True)
-        l_axis = gb_axis.content_layout
+        l_axis = QVBoxLayout()
+        gb_axis.setLayout(l_axis)
         
         self.chk_auto_x = QCheckBox("Auto Time")
         self.chk_auto_x.setChecked(True)
@@ -722,7 +730,8 @@ class BalanceTab(QWidget):
         
         # Data Analysis
         gb_ana = CollapsibleBox("Data Analysis")
-        l_ana = gb_ana.content_layout
+        l_ana = QVBoxLayout()
+        gb_ana.setLayout(l_ana)
         self.ent_fit_start = create_form_row(l_ana, "Fit Start (min):", "0")
         self.ent_fit_end = create_form_row(l_ana, "Fit End (min):", "10")
         self.btn_apply_fit = QPushButton("Apply Linear Fit")
@@ -793,8 +802,9 @@ class BalanceTab(QWidget):
         right_scroll.setWidget(right_widget)
         
         # Tab Management
-        gb_tab = QGroupBox("Tab Management")
-        l_tab = QVBoxLayout(gb_tab)
+        gb_tab = CollapsibleBox("Tab Management")
+        l_tab = QVBoxLayout()
+        gb_tab.setLayout(l_tab)
         
         l_tab.addWidget(QLabel("New Tab Name:"))
         self.ent_new_tab = QLineEdit()
@@ -824,8 +834,9 @@ class BalanceTab(QWidget):
         right_layout.addWidget(gb_tab)
         
         # Connection
-        gb_conn = QGroupBox("Connection")
-        l_conn = QVBoxLayout(gb_conn)
+        gb_conn = CollapsibleBox("Connection")
+        l_conn = QVBoxLayout()
+        gb_conn.setLayout(l_conn)
         l_conn.addWidget(QLabel("Balance Brand:"))
         self.combo_brand = QComboBox()
         self.combo_brand.addItems(["Bonvoisin", "Mettler Toledo", "Ohaus Adventurer", "Lachoi"])
@@ -856,8 +867,9 @@ class BalanceTab(QWidget):
         right_layout.addWidget(gb_conn)
         
         # Save Settings
-        gb_save = QGroupBox("Auto-Save Settings")
-        l_save = QVBoxLayout(gb_save)
+        gb_save = CollapsibleBox("Auto-Save Settings")
+        l_save = QVBoxLayout()
+        gb_save.setLayout(l_save)
         
         l_save.addWidget(QLabel("Save Folder Path:"))
         folder_layout = QHBoxLayout()
@@ -916,7 +928,7 @@ class BalanceTab(QWidget):
         right_layout.addWidget(gb_save)
         
         # Metadata Tokens
-        self.gb_tokens = QGroupBox("Metadata Tokens")
+        self.gb_tokens = CollapsibleBox("Metadata Tokens")
         self.tokens_outer_layout = QVBoxLayout(self.gb_tokens)
         self.l_tokens = QFormLayout()
         self.tokens_outer_layout.addLayout(self.l_tokens)
@@ -930,8 +942,9 @@ class BalanceTab(QWidget):
         self.refresh_tokens()
         
         # Notes
-        gb_notes = QGroupBox("Experiment Notes")
-        l_notes = QVBoxLayout(gb_notes)
+        gb_notes = CollapsibleBox("Experiment Notes")
+        l_notes = QVBoxLayout()
+        gb_notes.setLayout(l_notes)
         self.txt_notes = QTextEdit()
         self.txt_notes.setMinimumHeight(150)
         l_notes.addWidget(self.txt_notes)
