@@ -374,10 +374,11 @@ class GlobalSavingSettingsWidget(QWidget):
     def refresh_token_buttons(self):
         while self.grid_buttons.count():
             item = self.grid_buttons.takeAt(0)
-            if item.widget():
-                item.widget().hide()
-                item.widget().setParent(None)
-                item.widget().deleteLater()
+            w = item.widget()
+            if w:
+                w.hide()
+                w.setParent(None)
+                w.deleteLater()
         
         self.token_button_refs = []
             
@@ -902,10 +903,11 @@ class BalanceTab(QWidget):
     def refresh_local_token_buttons(self):
         while self.local_token_grid.count():
             item = self.local_token_grid.takeAt(0)
-            if item.widget():
-                item.widget().hide()
-                item.widget().setParent(None)
-                item.widget().deleteLater()
+            w = item.widget()
+            if w:
+                w.hide()
+                w.setParent(None)
+                w.deleteLater()
                 
         base_tokens = ["Tab Name", "Date", "Time", "Start Date", "Start Time"]
         all_tokens = base_tokens.copy()
