@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QMessageBox, QFileDialog, QTabWidget, QDialog, 
                              QGridLayout, QSplitter, QScrollArea, QTableWidget, 
                              QTableWidgetItem, QAbstractItemView, QHeaderView, QListWidget,
-                             QButtonGroup, QRadioButton, QFormLayout)
+                             QButtonGroup, QRadioButton, QFormLayout, QStackedWidget)
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread
 from PyQt6.QtGui import QFont, QColor
 
@@ -408,16 +408,22 @@ class SettingsTab(QWidget):
         self.app_ref = app_ref
         self.tab_name = "Settings"
         
-        main_layout = QVBoxLayout(self)
+        main_layout = QHBoxLayout(self)
         
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
+        # Sidebar
+        self.sidebar = QListWidget()
+        self.sidebar.setMaximumWidth(220)
+        self.sidebar.setStyleSheet("QListWidget { font-size: 14px; } QListWidget::item { padding: 10px; }")
+        
+        # Stack
+        self.stack = QStackedWidget()
+        
+        main_layout.addWidget(self.sidebar)
+        main_layout.addWidget(self.stack)
         
         # 1. Application Settings
-        gb_app = QGroupBox("Application Settings")
-        l_app = QVBoxLayout(gb_app)
+        page_app = QWidget()
+        l_app = QVBoxLayout(page_app)
         
         self.chk_btn_text = QCheckBox("Show Button Text")
         self.chk_btn_text.setChecked(self.app_ref.config.get("show_button_text", False))
@@ -432,34 +438,49 @@ class SettingsTab(QWidget):
         btn_restart = QPushButton("Restart Application")
         btn_restart.clicked.connect(self.app_ref.restart_app)
         l_app.addWidget(btn_restart)
-        scroll_layout.addWidget(gb_app)
+        l_app.addStretch()
+        
+        self.sidebar.addItem("⚙ Application Settings")
+        self.stack.addWidget(page_app)
         
         # 2. Panel Management
-        gb_panels = QGroupBox("Panel Management")
-        l_panels = QVBoxLayout(gb_panels)
+        page_panels = QWidget()
+        l_panels = QVBoxLayout(page_panels)
         self.panel_widget = ReorderPanelsWidget(self.app_ref)
         l_panels.addWidget(self.panel_widget)
-        scroll_layout.addWidget(gb_panels)
+        
+        self.sidebar.addItem("🗂 Panel Management")
+        self.stack.addWidget(page_panels)
         
         # 3. Global Settings & Metadata
-        gb_global = QGroupBox("Global Settings & Metadata")
-        l_global = QVBoxLayout(gb_global)
+        page_global = QWidget()
+        l_global = QVBoxLayout(page_global)
+        
+        from PyQt6.QtWidgets import QFrame
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         self.global_widget = GlobalSavingSettingsWidget(self, self.app_ref.config)
-        l_global.addWidget(self.global_widget)
-        scroll_layout.addWidget(gb_global)
+        scroll.setWidget(self.global_widget)
+        
+        l_global.addWidget(scroll)
+        
+        self.sidebar.addItem("💾 Global Settings")
+        self.stack.addWidget(page_global)
         
         # 4. Help
-        gb_help = QGroupBox("Help")
-        l_help = QVBoxLayout(gb_help)
+        page_help = QWidget()
+        l_help = QVBoxLayout(page_help)
         btn_help = QPushButton("About Flow Rate Engine")
         btn_help.clicked.connect(self.app_ref.show_help_dialog)
         l_help.addWidget(btn_help)
-        scroll_layout.addWidget(gb_help)
+        l_help.addStretch()
         
-        scroll_layout.addStretch()
+        self.sidebar.addItem("❓ Help & About")
+        self.stack.addWidget(page_help)
         
-        scroll.setWidget(scroll_content)
-        main_layout.addWidget(scroll)
+        self.sidebar.currentRowChanged.connect(self.stack.setCurrentIndex)
+        self.sidebar.setCurrentRow(0)
         
     def toggle_button_text(self, checked):
         self.app_ref.config["show_button_text"] = checked
