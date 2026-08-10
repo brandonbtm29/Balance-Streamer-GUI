@@ -844,6 +844,12 @@ class BalanceTab(QWidget):
         self.combo_autosave.currentIndexChanged.connect(self.toggle_autosave_interval)
         self.toggle_autosave_interval()
         
+        self.btn_quick_save = QPushButton("⚡ Quick Save Data")
+        self.btn_quick_save.setStyleSheet("background-color: #2980b9; color: white;")
+        self.btn_quick_save.setToolTip("Instantly overwrite the target Auto-Save file without prompting.")
+        self.btn_quick_save.clicked.connect(lambda checked=False: self.save_excel(auto=True))
+        l_save.addWidget(self.btn_quick_save)
+        
         right_layout.addWidget(gb_save)
         
         # Metadata Tokens
