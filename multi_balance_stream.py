@@ -285,12 +285,21 @@ class GlobalSavingSettingsWidget(QWidget):
         self.layout_tokens.addWidget(btn_add_token)
         
         global_tokens = self.config.get("global_tokens", [
-            {"name": "Column Name", "value": ""},
+            {"name": "Column #/Name", "value": ""},
             {"name": "Material", "value": ""},
             {"name": "Flow rate", "value": ""},
             {"name": "Bed length", "value": ""},
-            {"name": "Run #", "value": ""}
+            {"name": "Run #", "value": ""},
+            {"name": "(De)Sorption", "value": ""}
         ])
+        
+        existing_names = [t.get("name") for t in global_tokens if t.get("name")]
+        if "Column Name" in existing_names:
+            for t in global_tokens:
+                if t.get("name") == "Column Name": t["name"] = "Column #/Name"
+        if "(De)Sorption" not in existing_names:
+            global_tokens.append({"name": "(De)Sorption", "value": ""})
+            
         for t in global_tokens:
             self.add_token_row(t.get("name", ""), t.get("value", ""))
             
@@ -830,6 +839,10 @@ class BalanceTab(QWidget):
         temp_layout.addWidget(self.ent_save_template)
         l_save.addLayout(temp_layout)
         
+        self.local_token_grid = QGridLayout()
+        self.refresh_local_token_buttons()
+        l_save.addLayout(self.local_token_grid)
+        
         l_save.addSpacing(10)
         
         mode_layout = QFormLayout()
@@ -886,6 +899,35 @@ class BalanceTab(QWidget):
         
         self.splitter.setSizes([300, 600, 300])
 
+    def refresh_local_token_buttons(self):
+        while self.local_token_grid.count():
+            item = self.local_token_grid.takeAt(0)
+            if item.widget():
+                item.widget().hide()
+                item.widget().setParent(None)
+                item.widget().deleteLater()
+                
+        base_tokens = ["Tab Name", "Date", "Time", "Start Date", "Start Time"]
+        all_tokens = base_tokens.copy()
+        
+        global_tokens = self.app.config.get("global_tokens", []) if self.app else []
+        for t in global_tokens:
+            n = t.get("name")
+            if n and n not in all_tokens: all_tokens.append(n)
+            
+        for name in getattr(self, 'token_inputs', {}):
+            if name not in all_tokens: all_tokens.append(name)
+            
+        row = 0; col = 0
+        for tok in all_tokens:
+            btn = QPushButton(f"<{tok}>")
+            btn.clicked.connect(lambda checked, t=tok: self.ent_save_template.insert(f"<{t}>"))
+            self.local_token_grid.addWidget(btn, row, col)
+            col += 1
+            if col > 3:
+                col = 0
+                row += 1
+
     def refresh_tokens(self):
         old_values = {k: v.text() for k, v in getattr(self, 'token_inputs', {}).items()}
         
@@ -911,6 +953,9 @@ class BalanceTab(QWidget):
         for name, val in old_values.items():
             if name not in global_names:
                 self.add_custom_token_ui(name, val)
+                
+        if hasattr(self, 'refresh_local_token_buttons'):
+            self.refresh_local_token_buttons()
 
     def request_add_custom_token(self):
         from PyQt6.QtWidgets import QInputDialog
@@ -932,6 +977,9 @@ class BalanceTab(QWidget):
         row_layout.addWidget(btn_del)
         self.l_tokens.addRow(name + ":", row_layout)
         self.token_inputs[name] = ent
+        
+        if hasattr(self, 'refresh_local_token_buttons'):
+            self.refresh_local_token_buttons()
 
     def remove_custom_token(self, name):
         if name in self.token_inputs:
