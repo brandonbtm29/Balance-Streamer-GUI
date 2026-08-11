@@ -244,7 +244,7 @@ class GlobalSavingSettingsWidget(QWidget):
         
         # Save Folder
         gb_folder = CollapsibleBox("Global Default Save Folder")
-        l_folder = QHBoxLayout()
+        l_folder = QVBoxLayout()
         gb_folder.setLayout(l_folder)
         self.ent_folder = QTextEdit(self.config.get("global_default_save_folder", "Data"))
         self.ent_folder.setFixedHeight(45)
@@ -260,6 +260,7 @@ class GlobalSavingSettingsWidget(QWidget):
         gb_temp.setLayout(l_temp)
         
         form_layout = QFormLayout()
+        form_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.ent_template = QLineEdit(self.config.get("global_filename_template", "<Tab Name>_<Date>_<Time>"))
         form_layout.addRow("Filename Format:", self.ent_template)
         l_temp.addLayout(form_layout)
@@ -874,14 +875,13 @@ class BalanceTab(QWidget):
         gb_save.setLayout(l_save)
         
         l_save.addWidget(QLabel("Save Folder Path:"))
-        folder_layout = QHBoxLayout()
+        folder_layout = QVBoxLayout()
         default_folder = self.app.config.get("global_default_save_folder", "Data") if self.app else "Data"
         self.ent_save_folder = QTextEdit(default_folder)
         self.ent_save_folder.setFixedHeight(45)
         btn_browse = QPushButton("Browse")
         btn_browse.setMinimumHeight(35)
         btn_browse.clicked.connect(self.browse_save_folder)
-        folder_layout.addSpacing(20)
         folder_layout.addWidget(self.ent_save_folder)
         folder_layout.addWidget(btn_browse)
         l_save.addLayout(folder_layout)
@@ -910,6 +910,7 @@ class BalanceTab(QWidget):
         l_save.addSpacing(10)
         
         mode_layout = QFormLayout()
+        mode_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.combo_autosave = QComboBox()
         self.combo_autosave.addItems(["Off", "On Auto-Stop", "Every X Minutes"])
         mode_layout.addRow("Auto-Save Mode:", self.combo_autosave)
@@ -924,7 +925,7 @@ class BalanceTab(QWidget):
         self.btn_quick_save = QPushButton("⚡ Quick Save Data")
         self.btn_quick_save.setStyleSheet("background-color: #2980b9; color: white;")
         self.btn_quick_save.setToolTip("Instantly overwrite the target Auto-Save file without prompting.")
-        self.btn_quick_save.clicked.connect(lambda checked=False: self.save_excel(auto=True))
+        self.btn_quick_save.clicked.connect(lambda checked=False: self.save_excel(quick_save=True))
         l_save.addWidget(self.btn_quick_save)
         
         right_layout.addWidget(gb_save)
@@ -934,6 +935,7 @@ class BalanceTab(QWidget):
         self.tokens_outer_layout = QVBoxLayout()
         self.gb_tokens.setLayout(self.tokens_outer_layout)
         self.l_tokens = QFormLayout()
+        self.l_tokens.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.tokens_outer_layout.addLayout(self.l_tokens)
         
         self.btn_add_tab_token = QPushButton("+ Add Custom Token")
@@ -1571,7 +1573,7 @@ class BalanceTab(QWidget):
         s = re.sub(r'[<>:"/\\|?*]', '_', s)
         return s
 
-    def save_excel(self, auto=False):
+    def save_excel(self, auto=False, quick_save=False):
         if not self.times_sec: return
         
         if self.chk_use_global_template.isChecked():
@@ -1587,7 +1589,11 @@ class BalanceTab(QWidget):
         if not save_dir: save_dir = "Data"
         
         os.makedirs(save_dir, exist_ok=True)
-        default_path = os.path.join(save_dir, filename)
+        if quick_save and hasattr(self, 'last_saved_filepath') and self.last_saved_filepath:
+            filepath = self.last_saved_filepath
+        else:
+            default_path = os.path.join(save_dir, filename)
+
         
         if auto:
             filepath = default_path
@@ -1648,6 +1654,7 @@ class BalanceTab(QWidget):
             chart_ws.add_chart(chart, "A1")
                 
             wb.save(filepath)
+            self.last_saved_filepath = filepath
             self.unsaved_changes = False
             if self.app: self.app.set_unsaved_state(self.tab_name, False)
             QMessageBox.information(self, "Success", "Saved to Excel.")
