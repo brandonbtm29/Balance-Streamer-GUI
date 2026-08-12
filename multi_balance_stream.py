@@ -1944,9 +1944,11 @@ class BalanceTab(QWidget):
         btn_load = QPushButton("Load Selected")
         btn_delete = QPushButton("Delete Selected")
         btn_delete.setStyleSheet("background-color: #e74c3c; color: white;")
+        btn_cancel = QPushButton("Cancel")
         
         btn_layout.addWidget(btn_load)
         btn_layout.addWidget(btn_delete)
+        btn_layout.addWidget(btn_cancel)
         layout.addLayout(btn_layout)
         
         def do_load():
