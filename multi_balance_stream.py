@@ -1887,8 +1887,6 @@ class BalanceTab(QWidget):
         }
         
         if hasattr(self, 'token_inputs'):
-            kb[self.tab_name]["settings"]["tab_tokens"] = {k: v.text() for k, v in self.token_inputs.items()}
-        if hasattr(self, 'token_inputs'):
             settings_dict["tab_tokens"] = {k: v.text() for k, v in self.token_inputs.items()}
             
         cfg = {
