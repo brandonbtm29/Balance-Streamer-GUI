@@ -1953,15 +1953,19 @@ class BalanceTab(QWidget):
             idx = bg.checkedId()
             if idx >= 0:
                 cfg = saved_tabs[idx]
-                if "settings" in cfg:
-                    kb = self.app.config.setdefault("known_balances", {})
-                    kb[cfg.get("name", "New Tab")] = {
-                        "brand": cfg.get("brand", ""),
-                        "port": cfg.get("port", ""),
-                        "settings": cfg["settings"],
-                        "unsaved": False
-                    }
-                self.app.add_tab_with_settings(cfg.get("name", "New Tab"), cfg.get("brand", ""), cfg.get("port", ""))
+                cfg_name = cfg.get("name", "New Tab")
+                brand = cfg.get("brand", "")
+                port = cfg.get("port", "")
+                settings = cfg.get("settings", {})
+                
+                kb = self.app.config.setdefault("known_balances", {})
+                kb[cfg_name] = {
+                    "brand": brand,
+                    "port": port,
+                    "settings": settings,
+                    "unsaved": False
+                }
+                self.app.add_tab_with_settings(cfg_name, brand, port)
             dialog.accept()
             
         def do_delete():
@@ -2117,19 +2121,35 @@ class MultiBalanceApp(QMainWindow):
         self.add_tab_with_settings(name, "Bonvoisin", "")
 
     def add_tab_with_settings(self, name, brand, port):
-        tab = BalanceTab(app=self, tab_name=name)
+        existing_names = [t.tab_name for t in self.tab_objects if hasattr(t, 'tab_name')]
+        unique_name = name
+        counter = 1
+        while unique_name in existing_names:
+            unique_name = f"{name} ({counter})"
+            counter += 1
+            
+        if name in self.config.get("known_balances", {}) and unique_name != name:
+            self.config.setdefault("known_balances", {})[unique_name] = self.config["known_balances"][name]
+            
+        tab = BalanceTab(app=self, tab_name=unique_name)
         tab.combo_brand.setCurrentText(brand)
         if port: tab.combo_com.setCurrentText(port)
-        self.tabs.addTab(tab, name)
+        
+        tab.load_tab_settings()
+        
+        self.tabs.addTab(tab, unique_name)
         self.tab_objects.append(tab)
+        self.tabs.setCurrentWidget(tab)
         
         if self.config.get("auto_connect", True) and port:
             QTimer.singleShot(500, lambda: tab.connect_serial(auto=True))
 
     def rename_tab(self):
+        widget = self.tabs.currentWidget()
+        if not isinstance(widget, BalanceTab):
+            return
+        tab = widget
         idx = self.tabs.currentIndex()
-        if idx < 0: return
-        tab = self.tab_objects[idx]
         from PyQt6.QtWidgets import QInputDialog
         new_name, ok = QInputDialog.getText(self, "Rename Tab", "New Name:", text=tab.tab_name)
         if ok and new_name and new_name != tab.tab_name:
