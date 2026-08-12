@@ -919,6 +919,10 @@ class BalanceTab(QWidget):
         mode_layout.addRow("Auto-Save Interval (min):", self.ent_autosave_min)
         l_save.addLayout(mode_layout)
         
+        self.chk_save_on_pause = QCheckBox("Save Data Automatically on Pause")
+        self.chk_save_on_pause.setChecked(False)
+        l_save.addWidget(self.chk_save_on_pause)
+        
         self.combo_autosave.currentIndexChanged.connect(self.toggle_autosave_interval)
         self.toggle_autosave_interval()
         
@@ -1408,7 +1412,7 @@ class BalanceTab(QWidget):
             self.btn_record.setStyleSheet("background-color: #2ecc71; color: white; font-weight: bold;")
             self.update_button_text()
             
-            if self.combo_autosave.currentText() in ["On Auto-Stop", "Every X Minutes"]:
+            if hasattr(self, 'chk_save_on_pause') and self.chk_save_on_pause.isChecked():
                 self.save_excel(auto=True)
                 self.txt_notes.append("[Auto-Save] Data saved automatically upon pause.")
         self.canvas.draw_idle()
@@ -1789,6 +1793,8 @@ class BalanceTab(QWidget):
             "save_template": self.ent_save_template.text(),
             "autosave_mode": self.combo_autosave.currentText(),
             "autosave_min": self.ent_autosave_min.text(),
+            "save_on_pause": self.chk_save_on_pause.isChecked(),
+            "save_on_pause": self.chk_save_on_pause.isChecked(),
             "xmin": self.ent_xmin.text(),
             "xmax": self.ent_xmax.text(),
             "ymin": self.ent_ymin.text(),
@@ -1838,6 +1844,7 @@ class BalanceTab(QWidget):
                 
             if "autosave_mode" in settings: self.combo_autosave.setCurrentText(settings["autosave_mode"])
             if "autosave_min" in settings: self.ent_autosave_min.setText(settings["autosave_min"])
+            if "save_on_pause" in settings: self.chk_save_on_pause.setChecked(settings["save_on_pause"])
             
             if "splitter_state" in settings:
                 from PyQt6.QtCore import QByteArray
@@ -1878,6 +1885,8 @@ class BalanceTab(QWidget):
             "save_template": self.ent_save_template.text(),
             "autosave_mode": self.combo_autosave.currentText(),
             "autosave_min": self.ent_autosave_min.text(),
+            "save_on_pause": self.chk_save_on_pause.isChecked(),
+            "save_on_pause": self.chk_save_on_pause.isChecked(),
             "xmin": self.ent_xmin.text(),
             "xmax": self.ent_xmax.text(),
             "ymin": self.ent_ymin.text(),
