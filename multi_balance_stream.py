@@ -1677,10 +1677,24 @@ class BalanceTab(QWidget):
                 QMessageBox.critical(self, "Error", str(e))
 
     def scan_backup_sessions(self):
-        if not os.path.exists(self.backup_path): return []
+        import re
+        target_path = self.backup_path
+        if not os.path.exists(target_path):
+            alt_name = re.sub(r'_\(\d+\)_Backup\.csv$', '_Backup.csv', target_path)
+            if os.path.exists(alt_name):
+                target_path = alt_name
+            else:
+                backup_dir = os.path.dirname(target_path)
+                base_clean = re.sub(r'\s*\(\d+\)$', '', self.tab_name).replace(' ', '_')
+                possible = os.path.join(backup_dir, f"{base_clean}_Backup.csv")
+                if os.path.exists(possible):
+                    target_path = possible
+                else:
+                    return []
+        self._target_recovery_file = target_path
         sessions = []
         try:
-            with open(self.backup_path, 'r', newline='', encoding='utf-8') as f:
+            with open(target_path, 'r', newline='', encoding='utf-8') as f:
                 reader = csv.reader(f)
                 header = next(reader, None)
                 rows = list(reader)
@@ -1709,9 +1723,11 @@ class BalanceTab(QWidget):
         sessions = self.scan_backup_sessions()
         if not sessions: return QMessageBox.information(self, "Recovery", "No recovery sessions found.")
         
+        display_sessions = list(reversed(sessions))
+        
         dialog = QDialog(self)
         dialog.setWindowTitle("Restore Session")
-        dialog.setMinimumSize(400, 300)
+        dialog.setMinimumSize(450, 320)
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel("Multiple recording sessions were found. Please select which one to restore:"))
         
@@ -1720,11 +1736,15 @@ class BalanceTab(QWidget):
         scroll_layout = QVBoxLayout(scroll_widget)
         
         bg = QButtonGroup(dialog)
-        for i, s in enumerate(sessions):
-            rb = QRadioButton(f"Session {i+1} | {s['start_ts']} -> {s['end_ts']} | {s['points']} pts")
-            if i == len(sessions)-1: rb.setChecked(True)
+        total_sessions = len(sessions)
+        for i, s in enumerate(display_sessions):
+            orig_num = total_sessions - i
+            tag = " (Newest)" if i == 0 else (" (Oldest)" if i == total_sessions - 1 else "")
+            rb = QRadioButton(f"Session {orig_num}{tag} | {s['start_ts']} -> {s['end_ts']} | {s['points']} pts")
+            if i == 0: rb.setChecked(True)
             bg.addButton(rb, i)
             scroll_layout.addWidget(rb)
+            
         scroll_widget.setLayout(scroll_layout)
         scroll.setWidget(scroll_widget)
         scroll.setWidgetResizable(True)
@@ -1737,12 +1757,14 @@ class BalanceTab(QWidget):
         btn_layout.addWidget(btn_ignore)
         layout.addLayout(btn_layout)
         
+        recovery_file = getattr(self, '_target_recovery_file', self.backup_path)
+        
         def do_restore():
             idx = bg.checkedId()
             if idx >= 0:
-                s = sessions[idx]
+                s = display_sessions[idx]
                 try:
-                    with open(self.backup_path, 'r', newline='', encoding='utf-8') as f:
+                    with open(recovery_file, 'r', newline='', encoding='utf-8') as f:
                         reader = csv.reader(f)
                         header = next(reader, None)
                         rows = list(reader)
@@ -1975,7 +1997,25 @@ class BalanceTab(QWidget):
                     "settings": settings,
                     "unsaved": False
                 }
-                self.app.add_tab_with_settings(cfg_name, brand, port)
+                
+                current_tab = self.app.tabs.currentWidget() if self.app else None
+                is_unused = False
+                if isinstance(current_tab, BalanceTab):
+                    is_unused = (not current_tab.times_sec) and (not current_tab.recording) and (not current_tab.serial_thread)
+                
+                if is_unused:
+                    current_tab.tab_name = cfg_name
+                    idx_tab = self.app.tabs.indexOf(current_tab)
+                    if idx_tab >= 0:
+                        self.app.tabs.setTabText(idx_tab, cfg_name)
+                    current_tab.combo_brand.setCurrentText(brand)
+                    if port: current_tab.combo_com.setCurrentText(port)
+                    current_tab.load_tab_settings()
+                    current_tab.setup_backup_path()
+                    current_tab.ax_mass.set_title(f"{cfg_name} - Live Weight Data")
+                    current_tab.canvas.draw_idle()
+                else:
+                    self.app.add_tab_with_settings(cfg_name, brand, port)
             dialog.accept()
             
         def do_delete():
