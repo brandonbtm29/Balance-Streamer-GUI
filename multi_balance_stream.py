@@ -1593,13 +1593,14 @@ class BalanceTab(QWidget):
         if not save_dir: save_dir = "Data"
         
         os.makedirs(save_dir, exist_ok=True)
-        if quick_save and hasattr(self, 'last_saved_filepath') and self.last_saved_filepath:
-            filepath = self.last_saved_filepath
-        else:
-            default_path = os.path.join(save_dir, filename)
-
+        default_path = os.path.join(save_dir, filename)
         
-        if auto:
+        if quick_save:
+            if hasattr(self, 'last_saved_filepath') and self.last_saved_filepath:
+                filepath = self.last_saved_filepath
+            else:
+                filepath = default_path
+        elif auto:
             filepath = default_path
         else:
             filepath, _ = QFileDialog.getSaveFileName(self, "Save Excel Data", default_path, "Excel files (*.xlsx)")
