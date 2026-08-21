@@ -571,6 +571,7 @@ class BalanceTab(QWidget):
         self.btn_save_excel.setText("📊 Save to Excel" if show_text else "📊")
         self.btn_tare.setText("⚖ Tare Balance" if show_text else "⚖")
         self.btn_save_graph.setText("🖼 Save Graph PNG" if show_text else "🖼")
+        self.btn_quick_save.setText("⚡ Quick Save" if show_text else "⚡")
         self.btn_recover.setText("↺ Recover Session" if show_text else "↺")
 
     def build_ui(self):
@@ -602,9 +603,15 @@ class BalanceTab(QWidget):
         self.btn_save_graph.clicked.connect(self.save_graph)
         self.btn_save_graph.setToolTip("Save Graph PNG")
         
+        self.btn_quick_save = QPushButton()
+        self.btn_quick_save.setStyleSheet("background-color: #2980b9; color: white; font-weight: bold;")
+        self.btn_quick_save.setToolTip("Instantly overwrite the target Auto-Save file without prompting.")
+        self.btn_quick_save.clicked.connect(lambda checked=False: self.save_excel(quick_save=True))
+        
         self.top_action_layout.addWidget(self.btn_record)
         self.top_action_layout.addWidget(self.btn_clear)
         self.top_action_layout.addWidget(self.btn_save_excel)
+        self.top_action_layout.addWidget(self.btn_quick_save)
         self.top_action_layout.addWidget(self.btn_tare)
         self.top_action_layout.addWidget(self.btn_save_graph)
         self.btn_recover = QPushButton()
@@ -926,11 +933,7 @@ class BalanceTab(QWidget):
         self.combo_autosave.currentIndexChanged.connect(self.toggle_autosave_interval)
         self.toggle_autosave_interval()
         
-        self.btn_quick_save = QPushButton("⚡ Quick Save Data")
-        self.btn_quick_save.setStyleSheet("background-color: #2980b9; color: white;")
-        self.btn_quick_save.setToolTip("Instantly overwrite the target Auto-Save file without prompting.")
-        self.btn_quick_save.clicked.connect(lambda checked=False: self.save_excel(quick_save=True))
-        l_save.addWidget(self.btn_quick_save)
+
         
         right_layout.addWidget(gb_save)
         
