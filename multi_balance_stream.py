@@ -1627,6 +1627,18 @@ class BalanceTab(QWidget):
             doc_ws["A5"] = "COM Port:"
             doc_ws["B5"] = self.combo_com.currentText()
             
+            def parse_auto_type(raw_str):
+                if not raw_str or not isinstance(raw_str, str):
+                    return raw_str
+                s = raw_str.strip()
+                try:
+                    return int(s)
+                except ValueError:
+                    try:
+                        return float(s)
+                    except ValueError:
+                        return s
+
             current_row = 7
             if hasattr(self, 'token_inputs') and self.token_inputs:
                 for name, widget in self.token_inputs.items():
@@ -1634,7 +1646,7 @@ class BalanceTab(QWidget):
                     if n:
                         val = widget.text() if hasattr(widget, 'text') else str(widget)
                         doc_ws[f"A{current_row}"] = f"{n}:"
-                        doc_ws[f"B{current_row}"] = val
+                        doc_ws[f"B{current_row}"] = parse_auto_type(val)
                         current_row += 1
             else:
                 global_tokens = self.app.config.get("global_tokens", []) if self.app else []
@@ -1642,7 +1654,7 @@ class BalanceTab(QWidget):
                     n = t.get("name", "").strip()
                     if n:
                         doc_ws[f"A{current_row}"] = f"{n}:"
-                        doc_ws[f"B{current_row}"] = t.get("value", "")
+                        doc_ws[f"B{current_row}"] = parse_auto_type(t.get("value", ""))
                         current_row += 1
             
             current_row += 1
@@ -1650,18 +1662,24 @@ class BalanceTab(QWidget):
             doc_ws[f"A{current_row}"].font = Font(bold=True)
             doc_ws[f"A{current_row+1}"] = self.get_resolved_string(self.txt_notes.toPlainText())
             doc_ws.column_dimensions["A"].width = 25
-            doc_ws.column_dimensions["B"].width = 30
+            doc_ws.column_dimensions["B"].width = 35
             
             data_ws = wb.create_sheet("Data")
             data_ws.append(["Timestamp", "Duration (min)", "Mass (g)", "Flow Rate (g/min)"])
             for cell in data_ws[1]: cell.font = Font(bold=True)
                 
             for i in range(len(self.times_sec)):
-                ts = self.timestamps[i]
-                dur = round(self.times_min[i], 5)
-                mass = self.weights[i]
-                flw = self.flow_rates[i] if i < len(self.flow_rates) and self.flow_rates[i] is not None else ""
+                ts = str(self.timestamps[i])
+                dur = float(self.times_min[i])
+                mass = float(self.weights[i]) if (i < len(self.weights) and self.weights[i] is not None) else None
+                flw = float(self.flow_rates[i]) if (i < len(self.flow_rates) and self.flow_rates[i] is not None) else None
                 data_ws.append([ts, dur, mass, flw])
+                
+                row_idx = i + 2
+                data_ws[f"B{row_idx}"].number_format = "0.00000"
+                data_ws[f"C{row_idx}"].number_format = "0.000"
+                if flw is not None:
+                    data_ws[f"D{row_idx}"].number_format = "0.0000"
                 
             chart_ws = wb.create_sheet("Chart")
             chart = ScatterChart()
