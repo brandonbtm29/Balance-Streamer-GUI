@@ -1576,6 +1576,10 @@ class BalanceTab(QWidget):
                 else:
                     val = t.get("value", "")
                 s = s.replace(f"<{name}>", val)
+        if hasattr(self, 'token_inputs'):
+            for name, widget in self.token_inputs.items():
+                val = widget.text() if hasattr(widget, 'text') else str(widget)
+                s = s.replace(f"<{name}>", val)
         s = re.sub(r'<[^>]+>', '', s)
         s = re.sub(r'[<>:"/\\|?*]', '_', s)
         return s
@@ -1624,13 +1628,22 @@ class BalanceTab(QWidget):
             doc_ws["B5"] = self.combo_com.currentText()
             
             current_row = 7
-            global_tokens = self.app.config.get("global_tokens", []) if self.app else []
-            for t in global_tokens:
-                n = t.get("name", "").strip()
-                if n:
-                    doc_ws[f"A{current_row}"] = f"{n}:"
-                    doc_ws[f"B{current_row}"] = t.get("value", "")
-                    current_row += 1
+            if hasattr(self, 'token_inputs') and self.token_inputs:
+                for name, widget in self.token_inputs.items():
+                    n = name.strip()
+                    if n:
+                        val = widget.text() if hasattr(widget, 'text') else str(widget)
+                        doc_ws[f"A{current_row}"] = f"{n}:"
+                        doc_ws[f"B{current_row}"] = val
+                        current_row += 1
+            else:
+                global_tokens = self.app.config.get("global_tokens", []) if self.app else []
+                for t in global_tokens:
+                    n = t.get("name", "").strip()
+                    if n:
+                        doc_ws[f"A{current_row}"] = f"{n}:"
+                        doc_ws[f"B{current_row}"] = t.get("value", "")
+                        current_row += 1
             
             current_row += 1
             doc_ws[f"A{current_row}"] = "Experiment Notes:"
