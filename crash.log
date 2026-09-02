@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "C:\Users\brand\.gemini\antigravity\brain\18fb24bd-14b5-43bb-ace7-c978420b207e\scratch\run_test.py", line 9, in <module>
+    window.open_global_settings()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MultiBalanceApp' object has no attribute 'open_global_settings'
