@@ -1696,9 +1696,18 @@ class BalanceTab(QWidget):
             self.last_saved_filepath = filepath
             self.unsaved_changes = False
             if self.app: self.app.set_unsaved_state(self.tab_name, False)
-            QMessageBox.information(self, "Success", "Saved to Excel.")
+            if auto or quick_save:
+                msg = "Auto-Saved" if auto else "Quick Saved"
+                self.lbl_status.setText(f"Status: {msg} at {datetime.datetime.now().strftime('%H:%M:%S')}")
+                self.lbl_status.setStyleSheet("color: #27ae60; font-weight: bold;")
+            else:
+                QMessageBox.information(self, "Success", "Saved to Excel.")
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            if auto or quick_save:
+                self.lbl_status.setText(f"Status: Save Failed ({str(e)})")
+                self.lbl_status.setStyleSheet("color: #e74c3c; font-weight: bold;")
+            else:
+                QMessageBox.critical(self, "Error", str(e))
 
     def save_graph(self):
         dt_str = datetime.datetime.now().strftime("%Y-%m-%d_%H%M")
