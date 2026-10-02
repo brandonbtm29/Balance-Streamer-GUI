@@ -12,3 +12,6 @@ dist/
 *.spec
 versions/
 Data/
+archive/
+logs/
+__pycache__/
