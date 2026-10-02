@@ -1398,9 +1398,11 @@ class BalanceTab(QWidget):
         return self.wall_clock_min
 
     def toggle_record(self):
+        import datetime
         if not self.recording:
             if len(self.times_sec) == 0:
                 self.start_time = time.time()
+                self.session_start_time = datetime.datetime.now()
                 self.last_autosave_min = 0.0
             if hasattr(self, 'wall_clock_min'):
                 self.wall_clock_min.clear()
@@ -1432,9 +1434,12 @@ class BalanceTab(QWidget):
         self.flow_rates.clear()
         if hasattr(self, 'wall_clock_min'): self.wall_clock_min.clear()
         self.start_time = time.time()
+        import datetime
+        self.session_start_time = datetime.datetime.now()
         self.last_activity_time = time.time()
         self.last_recorded_time = 0.0
         self.last_flow_calc_n = 0
+        self.last_saved_filepath = None
         
         self.line_mass.set_data([], [])
         self.line_flow.set_data([], [])
