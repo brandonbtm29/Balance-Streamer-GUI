@@ -21,3 +21,5 @@ __pycache__/
 CLAUDE.local.md
 .claude/settings.local.json
 *.tmp
+# Per-machine pointer to the settings folder
+settings_location.json
