@@ -15,3 +15,8 @@ Data/
 archive/
 logs/
 __pycache__/
+
+# Local environment / Claude Code personal files
+.venv/
+CLAUDE.local.md
+.claude/settings.local.json
