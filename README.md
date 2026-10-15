@@ -31,10 +31,12 @@ the run is still going. It was built for column experiments in a polymer enginee
   crashes or loses power, Recover Session brings the run back. Backups older than 30 days are deleted.
 - **Tare, linear fit and pump calibration** from the side panels.
 - **Dark or light theme**, and panels you can collapse and reorder.
-- **One-click updates**: Settings → Application Settings → Check for Updates installs the newest
-  release from GitHub and restarts.
-- **Desktop shortcut**: Settings → Application Settings → Create Desktop Shortcut puts a Balance
-  Streamer icon on your desktop (on Windows it opens without the console window).
+- **Always know your version**: the bottom-right corner shows the version. When a newer release is
+  out it turns orange ("out of date") with an **Update to …** link.
+- **One-click updates**: the app checks GitHub when it starts (you can turn this off), and
+  **Check for Updates** installs the newest release and restarts.
+- **Desktop icon**: the first time it starts on a computer, the app offers to put a Balance Streamer
+  icon on the desktop, and it refreshes that icon after every update. No terminal window opens.
 - **Error log**: problems are written to `logs/balance_streamer.log` in the data folder instead of
   being skipped silently.
 
@@ -73,20 +75,30 @@ RS-232 cable for each balance.
    python3 -m venv .venv
    .venv/bin/python -m pip install -r requirements.txt
    ```
-3. Start it by double-clicking `Launch_Windows.bat` (Windows) or `Launch_Mac.command` (macOS).
-   You can also run `python multi_balance_stream.py` with the virtual environment active.
-4. Optional: in **Settings → Application Settings**, press **Create Desktop Shortcut**. From then on
-   you can start the app from the Balance Streamer icon on your desktop. On a Mac it is a small app
-   you can also drag to the Dock or Applications.
+3. Start it, with no terminal window:
+   - **Windows**: double-click `Launch_Windows.bat`.
+   - **macOS**: double-click **Balance Streamer.app** in the app's folder.
+4. The first time, the app asks whether to put a **Balance Streamer icon on your desktop**. Say yes,
+   and from then on start it from there. (On a Mac you can also drag the desktop app to the Dock.)
+   You can make the icon later with **Settings → Application Settings → Create Desktop Shortcut**.
+
+If the app doesn't open, it shows a message saying why and writes `startup-error.log` in the app's
+folder. `Launch_Mac.command` runs the app with its messages visible in Terminal, which helps when
+asking for help. If macOS says **Balance Streamer.app** "can't be opened" (this can happen with a
+ZIP download), right-click it and choose **Open** once.
 
 If your computer doesn't list the balance's port, install the driver for your USB-serial adapter
 (for example FTDI).
 
 ## Updating
 
-Open **Settings → Application Settings** and press **Check for Updates**. If a newer release is out,
-**Update and Restart** saves your tabs, downloads it, reinstalls the requirements and restarts. A
-recording in progress stops; its data stays in the backup file for Recover Session.
+When the app starts it asks GitHub whether a newer release is out. If there is one, the version in
+the bottom-right corner turns orange and says **out of date**; click **Update to …** (or press
+**Check for Updates** in **Settings → Application Settings**). **Update and Restart** saves your
+tabs, downloads it, reinstalls the requirements and restarts. A recording in progress stops; its
+data stays in the backup file for Recover Session. Your desktop icon is refreshed automatically the
+next time the app starts. To stop the check at startup, untick **Check for updates when the app
+starts**.
 
 This works when the app was installed with `git clone` (step 1 above) and needs git on the computer.
 It only moves to published releases, never to unfinished work, and it won't overwrite files you
@@ -150,7 +162,7 @@ Build on the system you want to run it on (Windows for an `.exe`, macOS for a Ma
   to mL/min with your liquid's density.
 - A balance tab only records while you press ▶. Being connected isn't enough.
 - Closing a tab forgets its saved connection settings.
-- The app only goes online when you press **Check for Updates** (to ask GitHub for the latest release).
+- The app only goes online to ask GitHub for the latest release: at startup (unless you turn that off) and when you press **Check for Updates**.
 
 ## Development
 
@@ -174,7 +186,7 @@ The code is in the `balance_streamer` package:
 | `serial_worker.py`, `parsers.py` | Reading a balance in a background thread and decoding its lines |
 | `settings_tab.py`, `widgets.py` | The Settings tab and small shared widgets |
 | `updater.py`, `update_panel.py` | Checking GitHub and updating a git copy |
-| `shortcut.py`, `shortcut_panel.py` | Create Desktop Shortcut (Windows .lnk, Mac .app, Linux .desktop) |
+| `shortcut.py`, `shortcut_panel.py` | Desktop icon: create it, offer it on first start, refresh it after updates |
 | `theme.py`, `logs.py` | Dark/light theme and the error log |
 
 `multi_balance_stream.py` only starts the app; it stays for the launchers and `build_app.py`.

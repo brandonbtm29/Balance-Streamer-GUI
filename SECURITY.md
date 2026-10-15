@@ -11,8 +11,9 @@ I'll reply within a week.
 Balance Streamer is a desktop app. It talks to balances on the computer's serial ports and writes
 files to its own data and settings folders. It stores no passwords or keys.
 
-It goes online only when you press **Check for Updates**: it asks GitHub's public API for this
-repository's latest release (no account, nothing about you is sent), and if you choose to update,
+It goes online only to check for updates, when it starts (this can be turned off in Settings) and
+when you press **Check for Updates**: it asks GitHub's public API for this repository's latest
+release (no account, nothing about you is sent), and if you choose to update,
 it runs `git fetch` from the folder's own `origin` remote, moves to the release tag
 (fast-forward only) and runs `pip install -r requirements.txt` with the app's Python.
 
