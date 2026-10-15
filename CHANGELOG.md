@@ -5,6 +5,15 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-14
+
+### Fixed
+- **Check for Updates** said "Couldn't reach GitHub" on Macs that use Python from python.org,
+  which has no certificate store of its own. It now brings its own certificates (the `certifi`
+  package), and a certificate problem gets its own message.
+- An update check that fails for an expected reason (offline, no releases yet) no longer writes a
+  full error trace to the log.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added
@@ -71,6 +80,7 @@ version number, tests and a proper README.
 Earlier versions were co-developed with Google Gemini in Antigravity; development continues with
 Claude (Anthropic).
 
-[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/releases/tag/v1.0.0
