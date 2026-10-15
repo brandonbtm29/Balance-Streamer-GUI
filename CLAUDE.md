@@ -17,6 +17,7 @@ PyQt6 desktop app that streams several lab balances at once over RS-232/USB seri
 - `serial_worker.py` `SerialWorker(QThread)`: reads one balance and emits Qt signals. Never touch widgets from this thread. `parsers.py` decodes lines for Bonvoisin, Mettler Toledo (MT-SICS), Ohaus Adventurer and Lachoi. Manuals are in `Ignore/Balance Brands/`.
 - `balance_tab.py` `BalanceTab`: one tab per balance (layout, connection, recording, chart, table). Its methods are split into mixins: `flow.py` (flow maths), `export.py` (file names, Excel, PNG), `recovery.py` (backup CSV pruning and Recover Session), `tab_config.py` (saved tab settings).
 - `settings_tab.py` (`SettingsTab`, `GlobalSavingSettingsWidget`), `widgets.py` (`CollapsibleBox`, `ReorderPanelsWidget`), `main_window.py` (`MultiBalanceApp`).
+- `shortcut.py` + `shortcut_panel.py`: Create Desktop Shortcut. Windows: .lnk via PowerShell/WScript.Shell targeting the venv's pythonw.exe with `assets/Analytical Balance.ico`. Mac: `~/Desktop/Balance Streamer.app` whose `Contents/MacOS/launch` script execs this clone's Python (icon converted to .icns with Qt + sips). Points at the clone, so it survives updates.
 - `updater.py` + `update_panel.py`: Check for Updates. Fast-forwards a git clone to the latest release tag, reinstalls requirements, rolls back on failure, restarts.
 - Errors: log with `logging.getLogger(__name__)`; they land in `logs/balance_streamer.log` in the data folder. Don't add bare `except:` or silent `except: pass` (ruff blocks them). Uncaught errors are logged and shown instead of closing the app.
 
@@ -35,6 +36,8 @@ PyQt6 desktop app that streams several lab balances at once over RS-232/USB seri
 - 10 Oct 2026 onward: development with Claude (Anthropic).
 - 14 Oct 2026: repo modernized (history rewritten to remove personal email and paths, pyproject, ruff, tests, CI) and released as v1.0.0.
 - 14 Oct 2026: v1.1.0 split the script into the `balance_streamer` package, added Check for Updates, an error log, Qt's own theme instead of pyqtdarktheme, and fixed the Timestamp axis.
+- 14 Oct 2026: v1.1.1 fixed the update check on python.org Python (certifi).
+- 15 Oct 2026: v1.2.0 added Create Desktop Shortcut and the app/window icon.
 
 ## Where code and data live
 - **Code** (this repo) is cloned outside SyncThing: `%USERPROFILE%\GitHub Projects\UAkron\Balance-Streamer-GUI` on Windows, `~/GitHub Projects/UAkron/Balance-Streamer-GUI` on the Mac. It syncs through GitHub only.

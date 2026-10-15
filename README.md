@@ -33,6 +33,8 @@ the run is still going. It was built for column experiments in a polymer enginee
 - **Dark or light theme**, and panels you can collapse and reorder.
 - **One-click updates**: Settings → Application Settings → Check for Updates installs the newest
   release from GitHub and restarts.
+- **Desktop shortcut**: Settings → Application Settings → Create Desktop Shortcut puts a Balance
+  Streamer icon on your desktop (on Windows it opens without the console window).
 - **Error log**: problems are written to `logs/balance_streamer.log` in the data folder instead of
   being skipped silently.
 
@@ -73,6 +75,9 @@ RS-232 cable for each balance.
    ```
 3. Start it by double-clicking `Launch_Windows.bat` (Windows) or `Launch_Mac.command` (macOS).
    You can also run `python multi_balance_stream.py` with the virtual environment active.
+4. Optional: in **Settings → Application Settings**, press **Create Desktop Shortcut**. From then on
+   you can start the app from the Balance Streamer icon on your desktop. On a Mac it is a small app
+   you can also drag to the Dock or Applications.
 
 If your computer doesn't list the balance's port, install the driver for your USB-serial adapter
 (for example FTDI).
@@ -169,6 +174,7 @@ The code is in the `balance_streamer` package:
 | `serial_worker.py`, `parsers.py` | Reading a balance in a background thread and decoding its lines |
 | `settings_tab.py`, `widgets.py` | The Settings tab and small shared widgets |
 | `updater.py`, `update_panel.py` | Checking GitHub and updating a git copy |
+| `shortcut.py`, `shortcut_panel.py` | Create Desktop Shortcut (Windows .lnk, Mac .app, Linux .desktop) |
 | `theme.py`, `logs.py` | Dark/light theme and the error log |
 
 `multi_balance_stream.py` only starts the app; it stays for the launchers and `build_app.py`.

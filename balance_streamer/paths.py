@@ -27,6 +27,7 @@ DATA_DIR = os.environ.get("UAKRON_APP_DATA_DIR") or os.path.join(
 APP_DIR = settings_location.app_folder(REPO_DIR)
 CONFIG_DIR = settings_location.resolve(APP_DIR, DATA_DIR)
 SETTINGS_FILES = ["config.json"]
+ICON_FILE = os.path.join(REPO_DIR, "assets", "Analytical Balance.ico")
 
 
 def enter_data_dir():

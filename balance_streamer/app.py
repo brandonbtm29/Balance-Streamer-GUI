@@ -3,12 +3,13 @@
 import logging
 import sys
 
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication
 
 from . import __version__
 from .logs import install_excepthook, setup_logging
 from .main_window import MultiBalanceApp
-from .paths import enter_data_dir
+from .paths import ICON_FILE, enter_data_dir
 from .theme import apply_theme
 
 
@@ -18,6 +19,8 @@ def main():
     install_excepthook()
     logging.getLogger(__name__).info("Balance Streamer %s starting", __version__)
     app = QApplication(sys.argv)
+    app.setApplicationName("Balance Streamer")
+    app.setWindowIcon(QIcon(ICON_FILE))  # window, taskbar and Dock icon
 
     window = MultiBalanceApp()
     apply_theme(dark=window.config.get("dark_mode", True), app=app)

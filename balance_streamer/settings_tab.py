@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 import settings_location
 
 from .paths import APP_DIR, DATA_DIR, SETTINGS_FILES
+from .shortcut_panel import ShortcutPanel
 from .update_panel import UpdatePanel
 from .widgets import CollapsibleBox, ReorderPanelsWidget
 
@@ -266,6 +267,8 @@ class SettingsTab(QWidget):
         )
         self.update_panel = UpdatePanel(self.app_ref)
         l_app.addWidget(self.update_panel)
+        self.shortcut_panel = ShortcutPanel()
+        l_app.addWidget(self.shortcut_panel)
         l_app.addStretch()
 
         self.sidebar.addItem("⚙ Application Settings")

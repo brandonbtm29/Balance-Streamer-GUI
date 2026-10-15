@@ -26,11 +26,12 @@ def setup_logging(level=logging.INFO):
     )
     handler._balance_streamer = True
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
-    console = logging.StreamHandler()
-    console._balance_streamer = True
-    console.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
     root.addHandler(handler)
-    root.addHandler(console)
+    if sys.stderr is not None:  # pythonw (the desktop shortcut on Windows) has no console
+        console = logging.StreamHandler()
+        console._balance_streamer = True
+        console.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+        root.addHandler(console)
     root.setLevel(level)
 
 
