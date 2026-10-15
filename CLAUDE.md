@@ -3,12 +3,16 @@
 PyQt6 desktop app that streams several lab balances at once over RS-232/USB serial, computes live flow rates from mass, and exports `.xlsx` with embedded charts. Part of Brandon's UAkron lab workspace (shared conventions in `../CLAUDE.md` when the repos are cloned side by side in `GitHub Projects/UAkron/`). GitHub: `brandonbtm29/Balance-Streamer-GUI`.
 
 ## Run / build / test
-- Install: `pip install -r requirements.txt` (PyQt6, pyqtdarktheme, pyserial, matplotlib, openpyxl, scipy, pyinstaller)
-- Run: `python multi_balance_stream.py`
+- Install: `pip install -r requirements.txt` (installs this folder from `pyproject.toml`, plus PyInstaller). Dev tools: `pip install -e ".[dev]"`.
+- Run: `python multi_balance_stream.py` (or the launchers, or the `balance-streamer` command once installed)
 - Build executable: `python build_app.py` → `dist/Balance_Streamer/` (PyInstaller `--onedir`, excludes PyQt5/PySide6)
-- Tests: `python -m pytest tests`
+- Tests: `python -m pytest` (headless Qt; `tests/conftest.py` points the data and settings folders at a temp folder, so tests never touch SyncThing)
+- Lint/format: `ruff check .` and `ruff format .` (config in `pyproject.toml`; `settings_location.py` is excluded because it must stay identical across the UAkron repos)
+- CI (`.github/workflows/ci.yml`): ruff + pytest on Windows/macOS/Linux, Python 3.11-3.13, plus a gitleaks scan of the whole history. Check it with `gh run list`.
+- Version: `__version__` in `multi_balance_stream.py` is the only copy. To release: bump it, move CHANGELOG "Unreleased" items into a dated section, commit, `git tag -a vX.Y.Z -m "Balance Streamer X.Y.Z"`, push main then the tag, then `gh release create vX.Y.Z --verify-tag --notes-file <section>`.
+- Commits use the GitHub noreply address set in this clone's git config; end AI-assisted commits with a `Co-Authored-By:` trailer.
 
-## Code map (`multi_balance_stream.py`, ~2,300 lines)
+## Code map (`multi_balance_stream.py`, ~2,600 lines)
 - `SerialWorker(QThread)`: reads one balance and emits Qt signals. Never touch widgets from this thread.
 - `BalanceTab`: one tab per balance (plot, filters, export).
 - `SettingsTab`, `GlobalSavingSettingsWidget`, `ReorderPanelsWidget`: app-wide settings.
@@ -22,11 +26,13 @@ PyQt6 desktop app that streams several lab balances at once over RS-232/USB seri
   `YYYY-MM-DD HHMMSS Flow rate C<1|2> <Material> 8cm <rate> mL_min R<##> <S|D>.xlsx`. The RTD dashboard in the parent folder depends on this format.
 - `Data/`, `Data Backups/`, `config.json`, `*.csv`, `build/`, `dist/`, `*.spec` are gitignored. Keep it that way.
 
-## History (from Antigravity, Jul–Oct 2026)
+## History (Antigravity Jul–Oct 2026, Claude since 10 Oct 2026)
 - Jul 2026: full rewrite from tkinter/customtkinter to PyQt6 (QThread serial workers, QtAgg matplotlib, native Qt dialogs). The old version was backed up as `multi_balance_stream_backup_ctk.py`.
 - Jul–Sep 2026: added adaptive smoothing / Fornberg-derivative work and a pump-smoothing animation (`Data/Pump_N_Animation.mp4`).
 - Sep 2026: older exports were renamed to their true start time to match the conductivity and pump logs.
 - 2 Oct 2026: folders reorganized; logs and archive gitignored.
+- 10 Oct 2026 onward: development with Claude (Anthropic).
+- 14 Oct 2026: repo modernized (history rewritten to remove personal email and paths, pyproject, ruff, tests, CI) and released as v1.0.0.
 
 ## Where code and data live
 - **Code** (this repo) is cloned outside SyncThing: `%USERPROFILE%\GitHub Projects\UAkron\Balance-Streamer-GUI` on Windows, `~/GitHub Projects/UAkron/Balance-Streamer-GUI` on the Mac. It syncs through GitHub only.
