@@ -3,6 +3,7 @@
 import io
 import json
 import shutil
+import ssl
 import subprocess
 import sys
 import urllib.error
@@ -36,21 +37,29 @@ class _Response(io.BytesIO):
 
 def test_latest_release_reads_github_answer():
     body = {"tag_name": "v9.8.7", "name": "Balance Streamer 9.8.7", "body": "Notes", "html_url": "https://x"}
-    release = updater.latest_release(opener=lambda req, timeout: _Response(json.dumps(body).encode()))
+    release = updater.latest_release(
+        opener=lambda req, timeout, context: _Response(json.dumps(body).encode())
+    )
     assert release == updater.Release("9.8.7", "v9.8.7", "Balance Streamer 9.8.7", "Notes", "https://x")
 
 
 def test_latest_release_explains_errors():
-    def no_releases(req, timeout):
+    def no_releases(req, timeout, context):
         raise urllib.error.HTTPError(req.full_url, 404, "Not Found", {}, None)
 
-    def offline(req, timeout):
+    def offline(req, timeout, context):
         raise urllib.error.URLError("no network")
 
     with pytest.raises(LookupError, match="No releases"):
         updater.latest_release(opener=no_releases)
+
+    def bad_certificate(req, timeout, context):
+        raise urllib.error.URLError(ssl.SSLCertVerificationError("certificate verify failed"))
+
     with pytest.raises(LookupError, match="Couldn't reach GitHub"):
         updater.latest_release(opener=offline)
+    with pytest.raises(LookupError, match="secure connection"):
+        updater.latest_release(opener=bad_certificate)
 
 
 # --- updating a real (temporary) git copy --------------------------------------------------

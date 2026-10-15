@@ -16,6 +16,7 @@ import logging
 import os
 import re
 import shutil
+import ssl
 import subprocess
 import sys
 import urllib.error
@@ -55,6 +56,16 @@ class Release:
     url: str
 
 
+def _ssl_context():
+    """Certificates for HTTPS. Python from python.org on macOS has none of its own until
+    "Install Certificates.command" is run, so use certifi's bundle when it's there."""
+    try:
+        import certifi
+    except ImportError:
+        return ssl.create_default_context()
+    return ssl.create_default_context(cafile=certifi.where())
+
+
 def latest_release(repo=REPO, timeout=10, opener=urllib.request.urlopen):
     """The newest published release on GitHub. Raises LookupError with a plain message."""
     request = urllib.request.Request(  # noqa: S310 - fixed https:// URL
@@ -62,7 +73,7 @@ def latest_release(repo=REPO, timeout=10, opener=urllib.request.urlopen):
         headers={"Accept": "application/vnd.github+json", "User-Agent": f"BalanceStreamer/{__version__}"},
     )
     try:
-        with opener(request, timeout=timeout) as response:
+        with opener(request, timeout=timeout, context=_ssl_context()) as response:
             data = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         if e.code == 404:
@@ -71,6 +82,12 @@ def latest_release(repo=REPO, timeout=10, opener=urllib.request.urlopen):
             raise LookupError("GitHub is limiting requests right now. Try again in an hour.") from e
         raise LookupError(f"GitHub answered with an error ({e.code}).") from e
     except (urllib.error.URLError, TimeoutError, OSError) as e:
+        reason = getattr(e, "reason", e)
+        if isinstance(reason, ssl.SSLError):
+            raise LookupError(
+                "Couldn't make a secure connection to GitHub (the certificate couldn't be checked). "
+                "A network filter or an outdated certificate store can cause this."
+            ) from e
         raise LookupError("Couldn't reach GitHub. Check the internet connection.") from e
     except ValueError as e:
         raise LookupError("GitHub sent an answer that couldn't be read.") from e

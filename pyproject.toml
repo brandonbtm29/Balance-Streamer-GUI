@@ -29,6 +29,7 @@ dependencies = [
     "openpyxl>=3.1",
     "numpy>=1.26",
     "scipy>=1.11",
+    "certifi>=2024.2.2", # HTTPS certificates for Check for Updates (python.org Python on macOS has none)
 ]
 
 [project.optional-dependencies]

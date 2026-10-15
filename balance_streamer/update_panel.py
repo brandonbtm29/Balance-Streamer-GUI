@@ -32,6 +32,9 @@ class _Task(QThread):
     def run(self):
         try:
             self.done.emit(self._fn(self.progress.emit))
+        except LookupError as e:  # an expected problem with a plain message (offline, no releases)
+            log.info("Update check: %s", e)
+            self.done.emit(e)
         except Exception as e:  # handed back to the GUI thread and shown there
             log.exception("Update task failed")
             self.done.emit(e)
