@@ -71,3 +71,14 @@ def test_timestamp_axis_uses_clock_time(tab):
     _record_linear_run(tab, seconds=3)
     tab.timestamps[2] = "2026-09-27 12:58:21.000"  # a 2-minute gap, e.g. after a pause
     assert tab.get_wall_clock_data() == pytest.approx([0.0, 1 / 60, 2.0])
+
+
+@pytest.mark.parametrize("dark", [True, False])
+def test_theme_switches(qapp, dark):
+    from PyQt6.QtGui import QPalette
+
+    from balance_streamer.theme import COLORS, apply_theme
+
+    apply_theme(dark=dark, app=qapp)
+    expected = COLORS["dark" if dark else "light"]["window"]
+    assert qapp.palette().color(QPalette.ColorRole.Window).name() == expected

@@ -5,7 +5,6 @@ import logging
 import os
 import sys
 
-import qdarktheme
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QApplication,
@@ -19,6 +18,7 @@ from PyQt6.QtWidgets import (
 from .balance_tab import BalanceTab
 from .paths import CONFIG_DIR
 from .settings_tab import SettingsTab
+from .theme import apply_theme
 
 log = logging.getLogger(__name__)
 
@@ -89,8 +89,7 @@ class MultiBalanceApp(QMainWindow):
         self.apply_theme()
 
     def apply_theme(self):
-        theme = "dark" if self.config.get("dark_mode", True) else "light"
-        QApplication.instance().setStyleSheet(qdarktheme.load_stylesheet(theme))
+        apply_theme(dark=self.config.get("dark_mode", True))
 
     def show_help_dialog(self):
         msg = QMessageBox(self)

@@ -24,8 +24,6 @@ classifiers = [
 ]
 dependencies = [
     "PyQt6>=6.5",
-    # 0.1.7 is the only release that installs on Python 3.12+; pinned so every machine looks the same.
-    "pyqtdarktheme==0.1.7",
     "pyserial>=3.5",
     "matplotlib>=3.8",
     "openpyxl>=3.1",
