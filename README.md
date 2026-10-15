@@ -31,6 +31,10 @@ the run is still going. It was built for column experiments in a polymer enginee
   crashes or loses power, Recover Session brings the run back. Backups older than 30 days are deleted.
 - **Tare, linear fit and pump calibration** from the side panels.
 - **Dark or light theme**, and panels you can collapse and reorder.
+- **One-click updates**: Settings → Application Settings → Check for Updates installs the newest
+  release from GitHub and restarts.
+- **Error log**: problems are written to `logs/balance_streamer.log` in the data folder instead of
+  being skipped silently.
 
 ## Supported balances
 
@@ -73,6 +77,21 @@ RS-232 cable for each balance.
 If your computer doesn't list the balance's port, install the driver for your USB-serial adapter
 (for example FTDI).
 
+## Updating
+
+Open **Settings → Application Settings** and press **Check for Updates**. If a newer release is out,
+**Update and Restart** saves your tabs, downloads it, reinstalls the requirements and restarts. A
+recording in progress stops; its data stays in the backup file for Recover Session.
+
+This works when the app was installed with `git clone` (step 1 above) and needs git on the computer.
+It only moves to published releases, never to unfinished work, and it won't overwrite files you
+changed in the app's folder. If installing the new requirements fails, the app goes back to the
+version you had. Copies downloaded as a ZIP, and standalone builds, show a link to the
+[release page](https://github.com/brandonbtm29/Balance-Streamer-GUI/releases/latest) instead.
+
+Version 1.0.0 has no update button: update it once by running `git pull` in the app's folder, then
+`pip install -r requirements.txt` with the virtual environment's Python.
+
 ## Using it
 
 1. Plug in the balance and set it up as in the table above.
@@ -105,6 +124,9 @@ The app keeps its code and its data apart:
 - **Settings** (`config.json`): in the app's own folder by default. In
   **Settings → Application Settings → Settings Folder** you can move them, for example into the data
   folder so several computers share them. `UAKRON_SETTINGS_DIR` overrides this.
+- **Log**: `logs/balance_streamer.log` in the data folder (three files of up to 1 MB are kept).
+  If `config.json` can't be read, it is kept as `config.json.unreadable` and the app starts with
+  default settings.
 
 Neither data nor settings are ever stored in the repository; both are in `.gitignore`.
 
@@ -123,23 +145,41 @@ Build on the system you want to run it on (Windows for an `.exe`, macOS for a Ma
   to mL/min with your liquid's density.
 - A balance tab only records while you press ▶. Being connected isn't enough.
 - Closing a tab forgets its saved connection settings.
-- The theme library (`pyqtdarktheme`) is pinned to 0.1.7, the only version that installs on
-  Python 3.12 and newer.
+- The app only goes online when you press **Check for Updates** (to ask GitHub for the latest release).
 
 ## Development
 
 ```bash
 python -m pip install -e ".[dev]"
-pytest              # headless Qt tests: parsers, flow rates, Excel export
+pytest              # headless Qt tests: parsers, flow rates, export, errors, updater
 ruff check .
 ruff format .
+python -m balance_streamer   # run from source
 ```
+
+The code is in the `balance_streamer` package:
+
+| Module | What's in it |
+|---|---|
+| `app.py` | `main()`: moves into the data folder, sets up logging and the theme, opens the window |
+| `paths.py` | Where data and settings live |
+| `main_window.py` | The window: a Settings tab plus one tab per balance |
+| `balance_tab.py` | One balance tab (layout, connection, recording, chart and table) |
+| `flow.py`, `export.py`, `recovery.py`, `tab_config.py` | The balance tab's flow maths, saving, crash recovery and saved tab settings |
+| `serial_worker.py`, `parsers.py` | Reading a balance in a background thread and decoding its lines |
+| `settings_tab.py`, `widgets.py` | The Settings tab and small shared widgets |
+| `updater.py`, `update_panel.py` | Checking GitHub and updating a git copy |
+| `theme.py`, `logs.py` | Dark/light theme and the error log |
+
+`multi_balance_stream.py` only starts the app; it stays for the launchers and `build_app.py`.
+`settings_location.py` is shared, unchanged, with the other UAkron lab apps.
 
 The tests point the app at a temporary data folder, so they never touch your real data. CI runs
 them on Windows, macOS and Linux with Python 3.11 to 3.13, and scans the history for secrets.
 
-The version number lives in one place: `__version__` in `multi_balance_stream.py`. Changes are
-listed in [CHANGELOG.md](CHANGELOG.md).
+The version number lives in one place: `__version__` in `balance_streamer/__init__.py`. Changes are
+listed in [CHANGELOG.md](CHANGELOG.md). Updates find new versions through GitHub releases, so each
+release needs an `vX.Y.Z` tag and a published release.
 
 ## How this was built
 
