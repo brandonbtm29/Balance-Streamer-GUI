@@ -19,12 +19,13 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
-@pytest.fixture(scope="session")
-def mbs():
-    """The app module, imported with the test folders in place."""
-    import multi_balance_stream
+@pytest.fixture(scope="session", autouse=True)
+def data_dir():
+    """Run every test inside the throwaway data folder, as the app does with the real one."""
+    from balance_streamer.paths import DATA_DIR, enter_data_dir
 
-    return multi_balance_stream
+    enter_data_dir()
+    return Path(DATA_DIR)
 
 
 @pytest.fixture(scope="session")
@@ -35,9 +36,11 @@ def qapp():
 
 
 @pytest.fixture
-def window(qapp, mbs):
+def window(qapp):
     """A fresh main window with its default balance tab."""
-    win = mbs.MultiBalanceApp()
+    from balance_streamer.main_window import MultiBalanceApp
+
+    win = MultiBalanceApp()
     yield win
     for tab in list(win.tab_objects):
         tab.update_timer.stop()

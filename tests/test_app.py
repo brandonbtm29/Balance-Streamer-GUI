@@ -6,13 +6,15 @@ import importlib.metadata
 import openpyxl
 import pytest
 
+import balance_streamer
 
-def test_version_matches_installed_package(mbs):
+
+def test_version_matches_installed_package():
     try:
         installed = importlib.metadata.version("balance-streamer")
     except importlib.metadata.PackageNotFoundError:
         pytest.skip("package not installed (run: pip install -e .[dev])")
-    assert installed == mbs.__version__
+    assert installed == balance_streamer.__version__
 
 
 def test_main_window_builds(window):

@@ -2,6 +2,8 @@
 
 import pytest
 
+from balance_streamer.parsers import parse_bonvoisin_response, parse_mt_sics_response, parse_ohaus_response
+
 
 @pytest.mark.parametrize(
     ("line", "expected"),
@@ -12,8 +14,8 @@ import pytest
         ("", (None, None, None)),
     ],
 )
-def test_bonvoisin(mbs, line, expected):
-    assert mbs.parse_bonvoisin_response(line) == expected
+def test_bonvoisin(line, expected):
+    assert parse_bonvoisin_response(line) == expected
 
 
 @pytest.mark.parametrize(
@@ -24,8 +26,8 @@ def test_bonvoisin(mbs, line, expected):
         ("ES", (None, None, None)),  # MT-SICS syntax error reply
     ],
 )
-def test_mettler_toledo_mt_sics(mbs, line, expected):
-    assert mbs.parse_mt_sics_response(line) == expected
+def test_mettler_toledo_mt_sics(line, expected):
+    assert parse_mt_sics_response(line) == expected
 
 
 @pytest.mark.parametrize(
@@ -36,5 +38,5 @@ def test_mettler_toledo_mt_sics(mbs, line, expected):
         ("no reading", (None, None, None)),
     ],
 )
-def test_ohaus(mbs, line, expected):
-    assert mbs.parse_ohaus_response(line) == expected
+def test_ohaus(line, expected):
+    assert parse_ohaus_response(line) == expected
