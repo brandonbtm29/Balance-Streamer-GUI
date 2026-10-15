@@ -1,7 +1,7 @@
 """Balance Streamer: stream several lab balances at once and log live flow rates."""
 
-import sys
 import os
+import sys
 
 __version__ = "1.0.0"
 
@@ -30,63 +30,58 @@ APP_DIR = settings_location.app_folder(script_dir)
 CONFIG_DIR = settings_location.resolve(APP_DIR, DATA_DIR)
 SETTINGS_FILES = ["config.json"]
 
-import serial
-import serial.tools.list_ports
-import time
-import re
 import csv
 import datetime
-import threading
-import statistics
 import json
-
-from PyQt6.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QComboBox,
-    QCheckBox,
-    QTextEdit,
-    QGroupBox,
-    QMessageBox,
-    QFileDialog,
-    QTabWidget,
-    QDialog,
-    QGridLayout,
-    QSplitter,
-    QScrollArea,
-    QTableWidget,
-    QTableWidgetItem,
-    QAbstractItemView,
-    QHeaderView,
-    QListWidget,
-    QButtonGroup,
-    QRadioButton,
-    QFormLayout,
-    QStackedWidget,
-    QTextBrowser,
-)
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread
-from PyQt6.QtGui import QFont, QColor
-
-import qdarktheme
+import re
+import statistics
+import time
 
 import matplotlib
+import qdarktheme
+import serial
+import serial.tools.list_ports
+from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
+from PyQt6.QtWidgets import (
+    QAbstractItemView,
+    QApplication,
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QFormLayout,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QScrollArea,
+    QSplitter,
+    QStackedWidget,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QTextBrowser,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 matplotlib.use("QtAgg")
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-
 import openpyxl
-from openpyxl.styles import Font, Alignment
-from openpyxl.chart import ScatterChart, Reference, Series
-import scipy.stats
 import scipy.signal
+import scipy.stats
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+from openpyxl.chart import Reference, ScatterChart, Series
+from openpyxl.styles import Font
 
 
 # --- Global Parsers ---
@@ -292,6 +287,7 @@ class ReorderPanelsWidget(QWidget):
 
         # Restart the app
         import sys
+
         from PyQt6.QtCore import QProcess
         from PyQt6.QtWidgets import QApplication
 
@@ -1277,7 +1273,7 @@ class BalanceTab(QWidget):
                     if is_new:
                         writer.writerow(["Timestamp", "Duration (min)", "Mass (g)", "Flow Rate (g/min)"])
                     writer.writerow([ts, round(curr / 60.0, 5), value, ""])
-            except Exception as e:
+            except Exception:
                 pass
 
             self.unsaved_changes = True
@@ -1459,7 +1455,7 @@ class BalanceTab(QWidget):
 
                             if self.combo_autosave.currentText() == "On Auto-Stop":
                                 self.save_excel(auto=True)
-                                self.txt_notes.append(f"[Auto-Save] Data saved to Data folder automatically.")
+                                self.txt_notes.append("[Auto-Save] Data saved to Data folder automatically.")
 
             if self.recording and self.combo_autosave.currentText() == "Every X Minutes":
                 try:
@@ -1542,7 +1538,7 @@ class BalanceTab(QWidget):
 
                 if n > 0:
                     self.table.scrollToBottom()
-            except Exception as e:
+            except Exception:
                 pass
 
     def get_wall_clock_data(self):
@@ -1671,7 +1667,7 @@ class BalanceTab(QWidget):
         if not os.path.exists(self.backup_path):
             return
         try:
-            with open(self.backup_path, "r", newline="", encoding="utf-8") as f:
+            with open(self.backup_path, newline="", encoding="utf-8") as f:
                 reader = csv.reader(f)
                 header = next(reader, None)
                 rows = list(reader)
@@ -1761,8 +1757,8 @@ class BalanceTab(QWidget):
     def get_resolved_string(self, template_str):
         if not template_str:
             return ""
-        import re
         import datetime
+        import re
 
         s = template_str
         s = s.replace("<Tab Name>", self.tab_name)
@@ -1968,9 +1964,9 @@ class BalanceTab(QWidget):
         self._target_recovery_file = target_path
         sessions = []
         try:
-            with open(target_path, "r", newline="", encoding="utf-8") as f:
+            with open(target_path, newline="", encoding="utf-8") as f:
                 reader = csv.reader(f)
-                header = next(reader, None)
+                next(reader, None)
                 rows = list(reader)
             current_session = None
             last_dur = -1.0
@@ -2046,9 +2042,9 @@ class BalanceTab(QWidget):
             if idx >= 0:
                 s = display_sessions[idx]
                 try:
-                    with open(recovery_file, "r", newline="", encoding="utf-8") as f:
+                    with open(recovery_file, newline="", encoding="utf-8") as f:
                         reader = csv.reader(f)
-                        header = next(reader, None)
+                        next(reader, None)
                         rows = list(reader)
                     for r_idx in range(s["start_idx"], s["end_idx"] + 1):
                         row = rows[r_idx]
@@ -2106,7 +2102,6 @@ class BalanceTab(QWidget):
             "save_template": self.ent_save_template.text(),
             "autosave_mode": self.combo_autosave.currentText(),
             "autosave_min": self.ent_autosave_min.text(),
-            "save_on_pause": self.chk_save_on_pause.isChecked(),
             "save_on_pause": self.chk_save_on_pause.isChecked(),
             "xmin": self.ent_xmin.text(),
             "xmax": self.ent_xmax.text(),
@@ -2225,7 +2220,6 @@ class BalanceTab(QWidget):
             "save_template": self.ent_save_template.text(),
             "autosave_mode": self.combo_autosave.currentText(),
             "autosave_min": self.ent_autosave_min.text(),
-            "save_on_pause": self.chk_save_on_pause.isChecked(),
             "save_on_pause": self.chk_save_on_pause.isChecked(),
             "xmin": self.ent_xmin.text(),
             "xmax": self.ent_xmax.text(),
@@ -2376,7 +2370,7 @@ class MultiBalanceApp(QMainWindow):
         self.config = {"auto_connect": True, "known_balances": {}, "saved_tabs": []}
         if os.path.exists(self.config_path):
             try:
-                with open(self.config_path, "r") as f:
+                with open(self.config_path) as f:
                     self.config.update(json.load(f))
             except:
                 pass
@@ -2457,7 +2451,7 @@ class MultiBalanceApp(QMainWindow):
 
         import subprocess
 
-        subprocess.Popen([sys.executable] + sys.argv)
+        subprocess.Popen([sys.executable] + sys.argv)  # noqa: S603 (restarts this app)
         QApplication.quit()
 
     def save_config(self):
