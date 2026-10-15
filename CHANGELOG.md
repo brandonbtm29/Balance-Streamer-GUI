@@ -5,6 +5,16 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-15
+
+### Added
+- **Create Desktop Shortcut** (Settings → Application Settings). On Windows it makes a desktop
+  shortcut with the balance icon that opens the app without the black console window. On a Mac it
+  makes a small Balance Streamer app on the desktop that you can also drag to the Dock or
+  Applications. The shortcut starts this copy of the app, so it keeps working after updates, and
+  pressing the button again replaces it.
+- The app's windows, taskbar entry and Dock icon now show the balance icon.
+
 ## [1.1.1] - 2026-10-14
 
 ### Fixed
@@ -80,7 +90,8 @@ version number, tests and a proper README.
 Earlier versions were co-developed with Google Gemini in Antigravity; development continues with
 Claude (Anthropic).
 
-[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/releases/tag/v1.0.0
