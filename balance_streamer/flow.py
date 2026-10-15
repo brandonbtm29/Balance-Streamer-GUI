@@ -155,13 +155,17 @@ class FlowMixin:
             self.wall_clock_min = []
 
         if len(self.wall_clock_min) < len(self.timestamps):
+            # Time stamps look like "2026-01-15 10:00:00.000"; fromisoformat also reads them
+            # without the milliseconds. (strptime without ".%f" used to fail on every one,
+            # so the Timestamp axis silently showed Duration instead.)
             try:
                 if len(self.wall_clock_min) == 0:
-                    self._t0 = datetime.datetime.strptime(self.timestamps[0], "%Y-%m-%d %H:%M:%S")
+                    self._t0 = datetime.datetime.fromisoformat(self.timestamps[0])
                 for i in range(len(self.wall_clock_min), len(self.timestamps)):
-                    t = datetime.datetime.strptime(self.timestamps[i], "%Y-%m-%d %H:%M:%S")
+                    t = datetime.datetime.fromisoformat(self.timestamps[i])
                     self.wall_clock_min.append((t - self._t0).total_seconds() / 60.0)
-            except:
+            except ValueError:
+                log.warning("Unreadable time stamp; showing duration on the time axis", exc_info=True)
                 while len(self.wall_clock_min) < len(self.timestamps):
                     self.wall_clock_min.append(self.times_min[len(self.wall_clock_min)])
         return self.wall_clock_min

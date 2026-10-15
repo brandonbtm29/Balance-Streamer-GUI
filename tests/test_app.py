@@ -65,3 +65,9 @@ def test_excel_export(tab, tmp_path):
     assert rows[0] == ("Timestamp", "Duration (min)", "Mass (g)", "Flow Rate (g/min)")
     assert len(rows) == 31
     assert rows[1][2] == pytest.approx(10.0)
+
+
+def test_timestamp_axis_uses_clock_time(tab):
+    _record_linear_run(tab, seconds=3)
+    tab.timestamps[2] = "2026-09-27 12:58:21.000"  # a 2-minute gap, e.g. after a pause
+    assert tab.get_wall_clock_data() == pytest.approx([0.0, 1 / 60, 2.0])
