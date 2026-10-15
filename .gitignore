@@ -1,26 +1,45 @@
+# --- Your private settings: NEVER commit these ---
+config.json
+secrets.json
+settings_location.json
+.env
+
+# --- Lab data (lives in the SyncThing data folder, not here) ---
+Data/
 Data Backups/
+Sessions/
+*.csv
+logs/
+*.log
+
+# --- Local scratch and archives ---
 Ignore/
 scratch/
-__pycache__/
-*.pyc
-*.csv
-.DS_Store
+archive/
+versions/
+*.tmp
 *.lnk
-config.json
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# --- Build output (PyInstaller) ---
 build/
 dist/
 *.spec
-versions/
-Data/
-archive/
-logs/
-__pycache__/
 
-# Local environment / Claude Code personal files
-.venv/
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Claude Code personal files ---
 CLAUDE.local.md
 .claude/settings.local.json
-*.tmp
-# Per-machine pointer to the settings folder
-settings_location.json
-*.log
