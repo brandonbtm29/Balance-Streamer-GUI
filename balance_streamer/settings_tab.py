@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 import settings_location
 
 from .paths import APP_DIR, DATA_DIR, SETTINGS_FILES
+from .update_panel import UpdatePanel
 from .widgets import CollapsibleBox, ReorderPanelsWidget
 
 
@@ -263,9 +264,8 @@ class SettingsTab(QWidget):
                 restart_cb=self.app_ref.restart_app,
             )
         )
-        btn_restart = QPushButton("Restart Application")
-        btn_restart.clicked.connect(self.app_ref.restart_app)
-        l_app.addWidget(btn_restart)
+        self.update_panel = UpdatePanel(self.app_ref)
+        l_app.addWidget(self.update_panel)
         l_app.addStretch()
 
         self.sidebar.addItem("⚙ Application Settings")
