@@ -304,13 +304,13 @@ class SettingsTab(QWidget):
         tb = QTextBrowser()
         tb.setOpenExternalLinks(True)
         tb.setHtml("""
-        <h2 style='color: #3498db;'>Hardware Setup: Continuous Print Mode</h2>
-        <p>For the Balance Streamer to read live data over USB/RS232, your balance must be configured to output data continuously.</p>
+        <h2 style='color: #3498db;'>Hardware Setup</h2>
+        <p>Every balance connects at <b>9600 baud, 8 data bits, no parity, 1 stop bit</b>. Pick the matching <b>Balance Brand</b> in the balance tab.</p>
         <ul>
-            <li><b>Ohaus:</b> Go to Menu > Print > Auto Print > Continuous. Set baud rate to 9600. (<a href="https://dmx.ohaus.com/WorkArea/showcontent.aspx?id=4294974227">Ohaus Manual</a>)</li>
-            <li><b>Mettler Toledo:</b> Go to Settings > System > Peripherals > Host. Set Send Mode to "Continuous". (<a href="https://www.mt.com/us/en/home/library/operating-instructions/laboratory-weighing/MS-TS_OI.html">Mettler Manual</a>)</li>
-            <li><b>Adam Equipment:</b> Go to RS-232 Menu > PC > Continuous. (<a href="https://www.adamequipment.com/media/docs/Print/EN/Manuals/Nimbus_Manual.pdf">Adam Manual</a>)</li>
-            <li><b>Generic / Other:</b> Refer to your manufacturer's manual. Look for settings named "Auto-Print", "Continuous Send", or "Stream Data".</li>
+            <li><b>Mettler Toledo:</b> the app asks the balance for each reading (MT-SICS command <code>SI</code>), so no continuous mode is needed. Set the host interface to 9600 baud. (<a href="https://www.mt.com/us/en/home/library/operating-instructions/laboratory-weighing/MS-TS_OI.html">Mettler Manual</a>)</li>
+            <li><b>Ohaus Adventurer:</b> the app asks for each reading (command <code>IP</code>). Set the baud rate to 9600; Auto Print can stay off. (<a href="https://dmx.ohaus.com/WorkArea/showcontent.aspx?id=4294974227">Ohaus Manual</a>)</li>
+            <li><b>Bonvoisin</b> and <b>Lachoi:</b> the app only listens, so set the balance to send continuously (often called "Continuous", "Auto-Print" or "Stream Data") at 9600 baud.</li>
+            <li><b>Other balances</b> that print a number and a unit on each line usually work with the Bonvoisin or Lachoi setting in continuous mode. For example, on Adam Equipment balances: RS-232 Menu > PC > Continuous. (<a href="https://www.adamequipment.com/media/docs/Print/EN/Manuals/Nimbus_Manual.pdf">Adam Manual</a>)</li>
         </ul>
         <br>
         <h2 style='color: #3498db;'>Derivative Engine</h2>
