@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "balance-streamer"
+dynamic = ["version"]
+description = "Stream several lab balances at once over RS-232/USB, chart live flow rates, and export to Excel."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Brandon T. McReynolds" }]
+keywords = ["laboratory", "balance", "scale", "serial", "rs-232", "flow-rate", "pyqt6"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "PyQt6>=6.5",
+    # 0.1.7 is the only release that installs on Python 3.12+; pinned so every machine looks the same.
+    "pyqtdarktheme==0.1.7",
+    "pyserial>=3.5",
+    "matplotlib>=3.8",
+    "openpyxl>=3.1",
+    "numpy>=1.26",
+    "scipy>=1.11",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+build = ["pyinstaller>=6.0"]
+
+[project.urls]
+Homepage = "https://github.com/brandonbtm29/Balance-Streamer-GUI"
+Changelog = "https://github.com/brandonbtm29/Balance-Streamer-GUI/blob/main/CHANGELOG.md"
+Issues = "https://github.com/brandonbtm29/Balance-Streamer-GUI/issues"
+
+[project.gui-scripts]
+balance-streamer = "multi_balance_stream:main"
+
+[tool.hatch.version]
+path = "multi_balance_stream.py"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["multi_balance_stream.py", "settings_location.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

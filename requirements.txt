@@ -1,7 +1,3 @@
-PyQt6
-pyqtdarktheme
-pyserial
-matplotlib
-openpyxl
-scipy
-pyinstaller
+# Kept so the launchers and build_app.py keep working.
+# The dependency list itself lives in pyproject.toml.
+-e .[build]

@@ -1,5 +1,9 @@
+"""Balance Streamer: stream several lab balances at once and log live flow rates."""
+
 import sys
 import os
+
+__version__ = "1.0.0"
 
 # --- Code vs data -----------------------------------------------------------
 # Code lives in GitHub Projects/UAkron/<repo>; data (exports, backups, logs) lives
@@ -2315,7 +2319,7 @@ class MultiBalanceApp(QMainWindow):
         event.accept()
 
 
-if __name__ == "__main__":
+def main():
     app = QApplication(sys.argv)
     
     window = MultiBalanceApp()
@@ -2325,3 +2329,7 @@ if __name__ == "__main__":
     window.showMaximized()
     
     sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
