@@ -54,3 +54,30 @@ only-include = ["multi_balance_stream.py", "settings_location.py"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+# Shared helper: an identical copy lives in every UAkron lab repo, so it is left as is.
+extend-exclude = ["settings_location.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = [
+    "S101", # asserts are fine in tests
+    # Existing style in the app, kept so linting doesn't change behaviour.
+    # Tightening these (bare except, try/except/pass) is a follow-up.
+    "E501",
+    "E701",
+    "E702",
+    "E722",
+    "S110",
+    "S112",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The app must chdir into its data folder before the remaining imports run.
+"multi_balance_stream.py" = ["E402"]
+# build_app.py runs pip and PyInstaller with fixed arguments.
+"build_app.py" = ["S603", "S607"]
+"tests/*" = ["E402"]
