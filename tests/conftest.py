@@ -51,3 +51,11 @@ def window(qapp):
 @pytest.fixture
 def tab(window):
     return window.tab_objects[0]
+
+
+@pytest.fixture(autouse=True)
+def _private_shortcut_state(tmp_path, monkeypatch):
+    """Keep the per-computer shortcut state file out of the real app folder."""
+    from balance_streamer import shortcut
+
+    monkeypatch.setattr(shortcut, "STATE_FILE", str(tmp_path / "local_state.json"))

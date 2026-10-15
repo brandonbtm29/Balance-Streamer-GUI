@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 
+from PyQt6 import sip
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QApplication,
@@ -19,6 +20,7 @@ from .balance_tab import BalanceTab
 from .paths import CONFIG_DIR
 from .settings_tab import SettingsTab
 from .theme import apply_theme
+from .update_panel import VersionStatus
 
 log = logging.getLogger(__name__)
 
@@ -65,13 +67,34 @@ class MultiBalanceApp(QMainWindow):
             self.add_tab()
 
         settings_tab = SettingsTab(self)
+        self.settings_tab = settings_tab
         self.tabs.insertTab(0, settings_tab, "Settings")
         self.tabs.setCurrentIndex(1)  # Default to showing the first balance tab instead of settings
+
+        # Bottom-right corner: the version, and a warning when a newer release is out.
+        self.version_status = VersionStatus()
+        self.statusBar().addPermanentWidget(self.version_status)
+        settings_tab.update_panel.checked.connect(self.version_status.show_result)
+        self.version_status.update_clicked.connect(self.show_update)
 
         if "app_geometry" in self.config:
             from PyQt6.QtCore import QByteArray
 
             self.restoreGeometry(QByteArray.fromHex(self.config["app_geometry"].encode()))
+
+    # --- after the window is shown ----------------------------------------------------------
+
+    def start_background_tasks(self):
+        """Things that may take a moment, run once the window is up (not during tests)."""
+        if self.settings_tab.update_panel.check_on_start():
+            QTimer.singleShot(1500, lambda: self.settings_tab.update_panel.check(quiet=True))
+        QTimer.singleShot(800, self.settings_tab.shortcut_panel.startup_check)
+
+    def show_update(self):
+        """Open Settings → Application Settings and show the update offer."""
+        self.tabs.setCurrentWidget(self.settings_tab)
+        self.settings_tab.sidebar.setCurrentRow(0)
+        self.settings_tab.update_panel.offer_latest()
 
     def toggle_button_text(self, checked):
         self.config["show_button_text"] = checked
@@ -181,7 +204,8 @@ class MultiBalanceApp(QMainWindow):
         self.tabs.setCurrentWidget(tab)
 
         if self.config.get("auto_connect", True) and port:
-            QTimer.singleShot(500, lambda: tab.connect_serial(auto=True))
+            # Skip it if the tab was closed in the meantime.
+            QTimer.singleShot(500, lambda: None if sip.isdeleted(tab) else tab.connect_serial(auto=True))
 
     def rename_tab(self):
         widget = self.tabs.currentWidget()

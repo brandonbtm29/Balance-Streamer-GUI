@@ -1,10 +1,12 @@
 """The "Updates" box on the Settings tab: check GitHub, update and restart."""
 
 import logging
+import threading
 
-from PyQt6.QtCore import Qt, QThread, QUrl, pyqtSignal
+from PyQt6.QtCore import QObject, Qt, QUrl, pyqtSignal
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -19,35 +21,65 @@ from . import __version__, updater
 log = logging.getLogger(__name__)
 
 
-class _Task(QThread):
-    """Run one slow function (network, git, pip) off the GUI thread."""
+class _Task(QObject):
+    """Run one slow function (network, git, pip, PowerShell) off the GUI thread.
+
+    A plain daemon thread rather than a QThread: if the window closes while a check is
+    still waiting on the network, the app can quit without Qt aborting over a running
+    thread. Results come back to the GUI thread through the queued `done` signal.
+    """
 
     done = pyqtSignal(object)
     progress = pyqtSignal(str)
+    _running = set()  # keeps tasks alive until they finish, even if their widget is gone
 
     def __init__(self, fn, parent=None):
         super().__init__(parent)
         self._fn = fn
+        self._thread = threading.Thread(target=self._run, daemon=True)
 
-    def run(self):
+    def start(self):
+        _Task._running.add(self)
+        self._thread.start()
+
+    def wait(self, timeout=None):
+        self._thread.join(timeout)
+
+    def _emit(self, signal, value):
         try:
-            self.done.emit(self._fn(self.progress.emit))
+            signal.emit(value)
+        except RuntimeError:  # the widget that wanted the answer was closed meanwhile
+            pass
+
+    def _run(self):
+        try:
+            result = self._fn(lambda text: self._emit(self.progress, text))
         except LookupError as e:  # an expected problem with a plain message (offline, no releases)
             log.info("Update check: %s", e)
-            self.done.emit(e)
+            result = e
         except Exception as e:  # handed back to the GUI thread and shown there
-            log.exception("Update task failed")
-            self.done.emit(e)
+            log.exception("Background task failed")
+            result = e
+        self._emit(self.done, result)
+        _Task._running.discard(self)
 
 
 class UpdatePanel(QGroupBox):
+    # Emitted after every check: the Release found, or the Exception that stopped the check.
+    checked = pyqtSignal(object)
+
     def __init__(self, app_ref, parent=None):
         super().__init__("Updates", parent)
         self.app_ref = app_ref
         self._task = None
+        self.latest = None  # newest Release seen, if it is newer than this version
         lay = QVBoxLayout(self)
         lay.addWidget(QLabel(f"You are running Balance Streamer <b>{__version__}</b>."))
-        self.lbl_status = QLabel("Checks GitHub for a newer release only when you press the button.")
+        self.chk_on_start = QCheckBox("Check for updates when the app starts")
+        self.chk_on_start.setChecked(self.check_on_start())
+        self.chk_on_start.toggled.connect(self._set_check_on_start)
+        lay.addWidget(self.chk_on_start)
+        self.lbl_status = QLabel("Asks GitHub for the latest release. Nothing about you is sent.")
         self.lbl_status.setWordWrap(True)
         self.lbl_status.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         lay.addWidget(self.lbl_status)
@@ -62,23 +94,44 @@ class UpdatePanel(QGroupBox):
 
     # --- checking ------------------------------------------------------------------------
 
-    def check(self):
+    def check_on_start(self):
+        return bool(self.app_ref.config.get("check_updates_on_start", True))
+
+    def _set_check_on_start(self, on):
+        self.app_ref.config["check_updates_on_start"] = bool(on)
+        self.app_ref.save_config()
+
+    def check(self, quiet=False):
+        """Ask GitHub for the latest release. Quiet checks (at startup) never open a dialog."""
         self.btn_check.setEnabled(False)
         self.lbl_status.setText("Checking GitHub…")
-        self._start(lambda _say: updater.latest_release(), self._checked)
+        self._start(lambda _say: updater.latest_release(), lambda result: self._checked(result, quiet))
 
-    def _checked(self, result):
+    def offer_latest(self):
+        """Show the update dialog for a release found earlier, or check again first."""
+        if self.latest is not None:
+            self._offer(self.latest)
+        else:
+            self.check()
+
+    def _checked(self, result, quiet=False):
         self.btn_check.setEnabled(True)
         if isinstance(result, Exception):
             msg = str(result) if isinstance(result, LookupError) else f"The check failed: {result}"
             self.lbl_status.setText(msg)
+            self.checked.emit(result)
             return
         release = result
         if not updater.is_newer(release.version):
+            self.latest = None
             self.lbl_status.setText(f"You have the latest version ({__version__}).")
+            self.checked.emit(release)
             return
+        self.latest = release
         self.lbl_status.setText(f"Version {release.version} is available.")
-        self._offer(release)
+        self.checked.emit(release)
+        if not quiet:
+            self._offer(release)
 
     def _offer(self, release):
         ready = updater.update_readiness()
@@ -150,3 +203,35 @@ class UpdatePanel(QGroupBox):
         if getattr(self, "_progress", None) is not None:
             self._task.progress.connect(self._progress.setLabelText)
         self._task.start()
+
+
+class VersionStatus(QLabel):
+    """Bottom-right corner of the window: the version, and a warning when it is out of date."""
+
+    update_clicked = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setTextFormat(Qt.TextFormat.RichText)
+        self.linkActivated.connect(lambda _link: self.update_clicked.emit())
+        self.setContentsMargins(8, 0, 8, 0)
+        self.show_result(None)
+
+    def show_result(self, result):
+        """None = not checked yet; a Release; or the Exception from a failed check."""
+        version = f"Balance Streamer {__version__}"
+        if isinstance(result, updater.Release) and updater.is_newer(result.version):
+            self.setText(
+                f"<span style='color:#e67e22; font-weight:bold;'>⚠ {version} is out of date.</span> "
+                f"<a href='update' style='color:#e67e22;'>Update to {result.version}…</a>"
+            )
+            self.setToolTip(f"{result.name} is available. Click to see what's new and update.")
+        elif isinstance(result, updater.Release):
+            self.setText(f"{version} <span style='color:#27ae60;'>✓ up to date</span>")
+            self.setToolTip("This is the latest release on GitHub.")
+        elif isinstance(result, Exception):
+            self.setText(version)
+            self.setToolTip(f"Couldn't check for updates: {result}")
+        else:
+            self.setText(version)
+            self.setToolTip("")

@@ -18,6 +18,11 @@ def main():
     setup_logging()
     install_excepthook()
     logging.getLogger(__name__).info("Balance Streamer %s starting", __version__)
+    if sys.platform == "win32":
+        # Its own taskbar group and icon, instead of being grouped with other Python programs.
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("brandonbtm29.BalanceStreamer")
     app = QApplication(sys.argv)
     app.setApplicationName("Balance Streamer")
     app.setWindowIcon(QIcon(ICON_FILE))  # window, taskbar and Dock icon
@@ -26,5 +31,6 @@ def main():
     apply_theme(dark=window.config.get("dark_mode", True), app=app)
 
     window.showMaximized()
+    window.start_background_tasks()
 
     sys.exit(app.exec())

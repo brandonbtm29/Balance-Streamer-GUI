@@ -7,20 +7,22 @@
 * Linux: a .desktop launcher.
 
 The shortcut points at this folder and its Python, so it keeps working after updates.
-Creating it again replaces the old one.
+Creating it again replaces the old one. When the app starts it refreshes an existing
+shortcut after an update (so the icon and paths stay current) and, the first time on a
+computer, offers to create one. That per-computer state lives in local_state.json in the
+app folder (gitignored), not in config.json, which may be shared between computers.
 """
 
+import json
 import logging
 import os
 import plistlib
 import shlex
-import shutil
 import subprocess
 import sys
-import tempfile
 
 from . import __version__
-from .paths import ICON_FILE, REPO_DIR
+from .paths import APP_DIR, ICON_FILE, REPO_DIR
 
 log = logging.getLogger(__name__)
 
@@ -58,14 +60,59 @@ def desktop_folder():
     return path
 
 
+def shortcut_path(desktop):
+    """Where this platform's shortcut lives on the given desktop."""
+    if sys.platform == "win32":
+        return os.path.join(desktop, APP_NAME + ".lnk")
+    if sys.platform == "darwin":
+        return os.path.join(desktop, APP_NAME + ".app")
+    return os.path.join(desktop, "balance-streamer.desktop")
+
+
 def create_shortcut(desktop=None):
     """Create (or replace) the desktop shortcut and return its path."""
     desktop = desktop or desktop_folder()
     if sys.platform == "win32":
-        return _create_windows(desktop)
-    if sys.platform == "darwin":
-        return _create_mac(desktop)
-    return _create_linux(desktop)
+        path = _create_windows(desktop)
+    elif sys.platform == "darwin":
+        path = _create_mac(desktop)
+    else:
+        path = _create_linux(desktop)
+    save_state(shortcut_version=__version__, shortcut_offered=True)
+    return path
+
+
+# --- what to do at startup ------------------------------------------------------------------
+
+STATE_FILE = os.path.join(APP_DIR, "local_state.json")
+
+
+def load_state():
+    try:
+        with open(STATE_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def save_state(**changes):
+    state = load_state()
+    state.update(changes)
+    try:
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2)
+    except OSError:
+        log.warning("Couldn't save %s", STATE_FILE, exc_info=True)
+
+
+def startup_action(exists, state, version=__version__):
+    """'refresh' an outdated shortcut, 'offer' to make one the first time, or 'nothing'."""
+    if exists:
+        return "refresh" if state.get("shortcut_version") != version else "nothing"
+    if state.get("shortcut_offered"):
+        return "nothing"  # already asked on this computer, or the user deleted the shortcut
+    return "offer"
 
 
 # --- Windows ------------------------------------------------------------------------------
@@ -119,36 +166,39 @@ def _create_windows(desktop):
 # --- macOS --------------------------------------------------------------------------------
 
 
-def _mac_icns(resources):
-    """Turn the .ico into AppIcon.icns with Qt and macOS's sips. Returns the file name or None."""
-    if not os.path.exists(ICON_ICO) or shutil.which("sips") is None:
-        return None
+def make_icns(dest):
+    """Write the balance icon as a macOS .icns file (with Pillow). Returns True if it worked."""
+    if not os.path.exists(ICON_ICO):
+        return False
     try:
-        from PyQt6.QtGui import QIcon
+        from PIL import Image
 
-        with tempfile.TemporaryDirectory() as tmp:
-            png = os.path.join(tmp, "icon.png")
-            if not QIcon(ICON_ICO).pixmap(256, 256).save(png, "PNG"):
-                return None
-            out = os.path.join(resources, "AppIcon.icns")
-            done = subprocess.run(  # noqa: S603, S607 - macOS's own image tool, fixed arguments
-                ["sips", "-s", "format", "icns", png, "--out", out], capture_output=True, timeout=60
-            )
-            return "AppIcon" if done.returncode == 0 and os.path.exists(out) else None
-    except Exception:  # an icon is nice to have; the shortcut works without it
+        with Image.open(ICON_ICO) as im:
+            im.size = max(im.ico.sizes())  # use the largest picture in the .ico
+            im.load()
+            im.save(dest, format="ICNS")
+        return True
+    except (OSError, ValueError, AttributeError):  # an icon is nice to have; the shortcut works without it
         log.warning("Couldn't make the shortcut icon", exc_info=True)
-        return None
+        return False
+
+
+# Shows a macOS alert: MAC_ALERT "title" "message"
+MAC_ALERT = (
+    "osascript -e 'on run argv' "
+    "-e 'display alert (item 1 of argv) message (item 2 of argv) as critical' -e 'end run'"
+)
 
 
 def _create_mac(desktop):
     program, args = launch_command()
     app = os.path.join(desktop, APP_NAME + ".app")
-    if os.path.exists(app):
-        shutil.rmtree(app)
+    # Files are rewritten in place rather than deleting the app first, because the app
+    # may be running from this very shortcut when it refreshes it after an update.
     macos = os.path.join(app, "Contents", "MacOS")
     resources = os.path.join(app, "Contents", "Resources")
-    os.makedirs(macos)
-    os.makedirs(resources)
+    os.makedirs(macos, exist_ok=True)
+    os.makedirs(resources, exist_ok=True)
 
     launcher = os.path.join(macos, "launch")
     command = " ".join(shlex.quote(part) for part in [program, *args])
@@ -156,6 +206,11 @@ def _create_mac(desktop):
         f.write(
             "#!/bin/bash\n"
             '# Made by Balance Streamer\'s "Create Desktop Shortcut" button.\n'
+            f"if [ ! -x {shlex.quote(program)} ]; then\n"
+            f'  {MAC_ALERT} "Balance Streamer can\'t start" '
+            f"{shlex.quote('It was moved or its Python is missing. Open the app folder and run Launch_Mac.command, then press Create Desktop Shortcut again.')}\n"
+            "  exit 1\n"
+            "fi\n"
             f"cd {shlex.quote(REPO_DIR)} || exit 1\n"
             f'exec {command} "$@"\n'
         )
@@ -171,9 +226,8 @@ def _create_mac(desktop):
         "LSMinimumSystemVersion": "11.0",
         "NSHighResolutionCapable": True,
     }
-    icon = _mac_icns(resources)
-    if icon:
-        info["CFBundleIconFile"] = icon
+    if make_icns(os.path.join(resources, "AppIcon.icns")):
+        info["CFBundleIconFile"] = "AppIcon"
     with open(os.path.join(app, "Contents", "Info.plist"), "wb") as f:
         plistlib.dump(info, f)
     os.utime(app)  # nudge Finder to pick up the new icon

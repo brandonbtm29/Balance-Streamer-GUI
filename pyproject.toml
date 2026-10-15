@@ -26,6 +26,7 @@ dependencies = [
     "PyQt6>=6.5",
     "pyserial>=3.5",
     "matplotlib>=3.8",
+    "pillow>=10", # app icon for the Mac shortcut
     "openpyxl>=3.1",
     "numpy>=1.26",
     "scipy>=1.11",
@@ -68,7 +69,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# shortcut.py runs PowerShell / sips with fixed arguments and makes its launcher executable.
+# shortcut.py runs PowerShell with fixed arguments and makes its launcher executable.
 "balance_streamer/shortcut.py" = ["S603", "S607", "S103"]
 # build_app.py runs pip and PyInstaller with fixed arguments.
 "build_app.py" = ["S603", "S607"]
