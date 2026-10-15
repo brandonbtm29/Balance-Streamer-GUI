@@ -5,6 +5,30 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-15
+
+### Added
+- **Version in the bottom-right corner** of the window. When a newer release is out it turns orange
+  and says the version is **out of date**, with an **Update to …** link that opens the update.
+- **Update check at startup**: the app asks GitHub for the latest release a moment after it opens.
+  Turn it off with **Check for updates when the app starts** in Settings → Application Settings.
+- **Desktop icon without asking twice**: the first time the app starts on a computer it offers to
+  put a Balance Streamer icon (with the balance picture) on the desktop, and after each update it
+  refreshes that icon by itself.
+- **Balance Streamer.app** in the app's folder on macOS: double-click it to start the app without
+  a Terminal window.
+- If the app can't start, it says why in a message box and writes `startup-error.log`.
+
+### Changed
+- `Launch_Windows.bat` starts the app without leaving a console window open.
+- `Launch_Mac.command` is now the troubleshooting launcher (it shows the app's messages in Terminal).
+- On Windows the app has its own taskbar entry and icon instead of grouping with other Python programs.
+- The Mac desktop icon is made with Pillow, so it no longer depends on macOS's `sips` tool.
+
+### Fixed
+- Closing a balance tab within half a second of opening it could raise an error when its delayed
+  auto-connect fired.
+
 ## [1.2.0] - 2026-10-15
 
 ### Added
@@ -90,7 +114,8 @@ version number, tests and a proper README.
 Earlier versions were co-developed with Google Gemini in Antigravity; development continues with
 Claude (Anthropic).
 
-[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.0.0...v1.1.0
