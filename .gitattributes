@@ -7,3 +7,5 @@
 *.py       text eol=lf
 *.ico      binary
 *.png      binary
+*.app/Contents/MacOS/launch  text eol=lf
+*.icns     binary

@@ -1,5 +1,7 @@
 #!/bin/bash
-# Double-click launcher for macOS. Data is saved to ~/SyncThing/UAkron Playground/Balance Streamer Application
+# Runs Balance Streamer with its messages shown in this Terminal window (for troubleshooting).
+# For everyday use, double-click "Balance Streamer.app" in this folder, or the desktop shortcut:
+# they start the app without a Terminal window.
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
 if [ -x ".venv/bin/python" ]; then PY=".venv/bin/python"; else PY="python3"; fi

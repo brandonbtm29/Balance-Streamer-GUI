@@ -1,0 +1,13 @@
+#!/bin/bash
+# Starts Balance Streamer without a Terminal window, using the .venv in this folder.
+# For troubleshooting, Launch_Mac.command runs the app with its messages shown in Terminal.
+DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+PY="$DIR/.venv/bin/python"
+if [ ! -x "$PY" ]; then
+  osascript -e 'on run argv' -e 'display alert (item 1 of argv) message (item 2 of argv) as critical' -e 'end run' \
+    "Balance Streamer isn't set up yet" \
+    "Create its virtual environment first (see Install in the README), then open it again."
+  exit 1
+fi
+cd "$DIR" || exit 1
+exec "$PY" "$DIR/multi_balance_stream.py" "$@"
