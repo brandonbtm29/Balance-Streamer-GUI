@@ -2,6 +2,7 @@
 
 import csv
 import datetime
+import logging
 import os
 import time
 
@@ -17,6 +18,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+log = logging.getLogger(__name__)
 
 
 class RecoveryMixin:
@@ -46,15 +49,15 @@ class RecoveryMixin:
                             ts = datetime.datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S.%f")
                         if ts >= thirty_days_ago:
                             valid_rows.append(row)
-                    except:
+                    except ValueError:  # unreadable time stamp: keep the row rather than lose data
                         valid_rows.append(row)
 
             with open(self.backup_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow(header)
                 writer.writerows(valid_rows)
-        except:
-            pass
+        except OSError:
+            log.warning("Couldn't prune old rows from %s", self.backup_path, exc_info=True)
 
     def scan_backup_sessions(self):
         import re
@@ -93,13 +96,13 @@ class RecoveryMixin:
                         current_session["end_ts"] = ts
                         current_session["points"] += 1
                         last_dur = dur
-                    except:
+                    except ValueError:  # skip a damaged row
                         pass
             if current_session:
                 current_session["end_idx"] = len(rows) - 1
                 sessions.append(current_session)
-        except:
-            pass
+        except OSError:
+            log.warning("Couldn't read backup file %s", target_path, exc_info=True)
         return sessions
 
     def prompt_session_recovery(self):
@@ -157,26 +160,32 @@ class RecoveryMixin:
                         reader = csv.reader(f)
                         next(reader, None)
                         rows = list(reader)
+                    skipped = 0
                     for r_idx in range(s["start_idx"], s["end_idx"] + 1):
                         row = rows[r_idx]
                         if len(row) >= 4:
                             try:
-                                self.timestamps.append(row[0])
                                 dur = float(row[1])
-                                self.times_min.append(dur)
-                                self.times_sec.append(dur * 60.0)
-                                self.weights.append(float(row[2]))
-                                flw = row[3]
-                                if flw:
-                                    self.flow_rates.append(float(flw))
-                            except:
-                                pass
+                                mass = float(row[2])
+                                flw = float(row[3]) if row[3] else None
+                            except ValueError:  # skip a damaged row, keeping the lists in step
+                                skipped += 1
+                                continue
+                            self.timestamps.append(row[0])
+                            self.times_min.append(dur)
+                            self.times_sec.append(dur * 60.0)
+                            self.weights.append(mass)
+                            if flw is not None:
+                                self.flow_rates.append(flw)
                     if self.times_sec:
                         self.start_time = time.time() - self.times_sec[-1]
                         self.last_recorded_time = self.times_sec[-1]
                         self.unsaved_changes = True
-                except:
-                    pass
+                    if skipped:
+                        log.warning("Skipped %d damaged rows while restoring from %s", skipped, recovery_file)
+                except (OSError, IndexError) as e:
+                    log.exception("Couldn't restore the session from %s", recovery_file)
+                    QMessageBox.warning(self, "Recover Session", f"Couldn't restore this session:\n{e}")
             dialog.accept()
 
         btn_restore.clicked.connect(do_restore)

@@ -1,6 +1,7 @@
 """The main window: one Settings tab plus a tab per balance."""
 
 import json
+import logging
 import os
 import sys
 
@@ -19,6 +20,8 @@ from .balance_tab import BalanceTab
 from .paths import CONFIG_DIR
 from .settings_tab import SettingsTab
 
+log = logging.getLogger(__name__)
+
 
 class MultiBalanceApp(QMainWindow):
     def __init__(self):
@@ -32,8 +35,14 @@ class MultiBalanceApp(QMainWindow):
             try:
                 with open(self.config_path) as f:
                     self.config.update(json.load(f))
-            except:
-                pass
+            except (OSError, ValueError):
+                # Keep the unreadable file so saving the defaults doesn't destroy it.
+                log.exception("Couldn't read %s; starting from default settings", self.config_path)
+                try:
+                    os.replace(self.config_path, self.config_path + ".unreadable")
+                    log.warning("Moved it to %s.unreadable", self.config_path)
+                except OSError:
+                    log.exception("Couldn't move %s aside", self.config_path)
 
         # Main Layout
         central = QWidget()
@@ -131,8 +140,8 @@ class MultiBalanceApp(QMainWindow):
             with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=4)
             os.replace(tmp_path, self.config_path)
-        except:
-            pass
+        except (OSError, TypeError, ValueError):
+            log.exception("Couldn't save settings to %s", self.config_path)
 
     def save_connection(self, name, brand, port):
         if "known_balances" not in self.config:
@@ -198,8 +207,8 @@ class MultiBalanceApp(QMainWindow):
             if os.path.exists(old_backup):
                 try:
                     os.rename(old_backup, tab.backup_path)
-                except:
-                    pass
+                except OSError:
+                    log.warning("Couldn't rename backup %s to %s", old_backup, tab.backup_path, exc_info=True)
 
             if old_name in self.config.get("known_balances", {}):
                 self.config["known_balances"][new_name] = self.config["known_balances"].pop(old_name)

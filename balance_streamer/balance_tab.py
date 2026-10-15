@@ -2,6 +2,7 @@
 
 import csv
 import datetime
+import logging
 import os
 import time
 
@@ -43,6 +44,8 @@ from .recovery import RecoveryMixin
 from .serial_worker import SerialWorker
 from .tab_config import TabConfigMixin
 from .widgets import CollapsibleBox
+
+log = logging.getLogger(__name__)
 
 
 class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget):
@@ -684,7 +687,7 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
 
         try:
             intrvl = float(self.ent_interval.text())
-        except:
+        except ValueError:
             intrvl = 1.0
 
         curr = time.time() - self.start_time
@@ -705,8 +708,13 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
                     if is_new:
                         writer.writerow(["Timestamp", "Duration (min)", "Mass (g)", "Flow Rate (g/min)"])
                     writer.writerow([ts, round(curr / 60.0, 5), value, ""])
-            except Exception:
-                pass
+            except OSError:
+                # Recording carries on, but crash protection is off: say so once.
+                if not getattr(self, "_backup_error_logged", False):
+                    log.error("Couldn't write the backup file %s", self.backup_path, exc_info=True)
+                    self._backup_error_logged = True
+                    self.lbl_status.setText("Status: Backup file can't be written (see log)")
+                    self.lbl_status.setStyleSheet("color: #e74c3c; font-weight: bold;")
 
             self.unsaved_changes = True
             if self.app:
@@ -731,7 +739,7 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
                     current_flow = self.flow_rates[-1]
                     try:
                         thresh = float(self.ent_auto_stop_thresh.text())
-                    except:
+                    except ValueError:
                         thresh = 0.1
 
                     if abs(current_flow) > thresh:
@@ -739,7 +747,7 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
                     else:
                         try:
                             stop_min = float(self.ent_auto_stop_min.text())
-                        except:
+                        except ValueError:
                             stop_min = 5.0
                         if time.time() - getattr(self, "last_activity_time", time.time()) > (stop_min * 60.0):
                             self.toggle_record()
@@ -754,7 +762,7 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
             if self.recording and self.combo_autosave.currentText() == "Every X Minutes":
                 try:
                     autosave_interval = float(self.ent_autosave_min.text())
-                except:
+                except ValueError:
                     autosave_interval = 5.0
 
                 if len(self.times_sec) > 0:
@@ -833,7 +841,10 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
                 if n > 0:
                     self.table.scrollToBottom()
             except Exception:
-                pass
+                # A drawing problem shouldn't stop recording; log it once per tab.
+                if not getattr(self, "_redraw_error_logged", False):
+                    log.warning("Couldn't update the chart or table for %s", self.tab_name, exc_info=True)
+                    self._redraw_error_logged = True
 
     def toggle_record(self):
         import datetime
@@ -893,18 +904,18 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
         if not self.chk_auto_x.isChecked():
             try:
                 self.ax_mass.set_xlim(float(self.ent_xmin.text()), float(self.ent_xmax.text()))
-            except:
-                pass
+            except ValueError:
+                pass  # limits not filled in (yet): keep automatic
         if not self.chk_auto_y_mass.isChecked():
             try:
                 self.ax_mass.set_ylim(float(self.ent_ymin.text()), float(self.ent_ymax.text()))
-            except:
-                pass
+            except ValueError:
+                pass  # limits not filled in (yet): keep automatic
         if not self.chk_auto_y_flow.isChecked() and self.chk_show_flow.isChecked():
             try:
                 self.ax_flow.set_ylim(float(self.ent_flowmin.text()), float(self.ent_flowmax.text()))
-            except:
-                pass
+            except ValueError:
+                pass  # limits not filled in (yet): keep automatic
         self.canvas.draw_idle()
 
     def manual_apply_filters(self):
@@ -917,7 +928,7 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
         try:
             start_min = float(self.ent_fit_start.text())
             end_min = float(self.ent_fit_end.text())
-        except:
+        except ValueError:
             return
 
         valid_indices = [i for i, t in enumerate(self.times_min) if start_min <= t <= end_min]
@@ -944,7 +955,7 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
     def log_calibration(self):
         try:
             rpm = float(self.ent_rpm.text())
-        except:
+        except ValueError:
             return QMessageBox.critical(self, "Error", "Invalid RPM.")
         if len(self.flow_rates) == 0 or len(self.times_sec) == 0:
             return
@@ -977,8 +988,9 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
                 ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 writer.writerow([ts, rpm, round(flow, 4), "30.0"])
             QMessageBox.information(self, "Success", f"Logged: {round(flow, 4)} g/min")
-        except:
-            pass
+        except OSError as e:
+            log.exception("Couldn't write the calibration file %s", cal_path)
+            QMessageBox.critical(self, "Error", f"Couldn't save the calibration point:\n{e}")
 
     def browse_save_folder(self):
         folder = QFileDialog.getExistingDirectory(

@@ -1,7 +1,10 @@
 """Turning logged mass into flow rates."""
 
 import datetime
+import logging
 import statistics
+
+log = logging.getLogger(__name__)
 
 
 class FlowMixin:
@@ -34,7 +37,8 @@ class FlowMixin:
                 for i in range(n):
                     raw_flows[i] = deriv_raw[i] * 60.0
                     valid_indices.append(i)
-            except:
+            except Exception:  # bad Savitzky-Golay settings: fall back to the plain derivative
+                log.debug("Savitzky-Golay derivative failed; using np.gradient", exc_info=True)
                 import numpy as np
 
                 deriv_raw = np.gradient(self.weights, self.times_sec)
@@ -57,7 +61,7 @@ class FlowMixin:
         if filter_type in ["Mean", "Median"]:
             try:
                 win = max(1, int(self.ent_filter_param.text()))
-            except:
+            except ValueError:
                 win = 20
 
             for v_idx in range(len(valid_indices)):
@@ -73,7 +77,7 @@ class FlowMixin:
         elif filter_type == "EMA":
             try:
                 alpha = float(self.ent_filter_param.text())
-            except:
+            except ValueError:
                 alpha = 0.1
             alpha = max(0.01, min(1.0, alpha))
 
@@ -89,13 +93,13 @@ class FlowMixin:
         elif filter_type == "Butterworth":
             try:
                 cutoff = float(self.ent_filter_param.text())
-            except:
+            except ValueError:
                 cutoff = 0.05
 
             try:
                 try:
                     intrvl = float(self.ent_interval.text())
-                except:
+                except ValueError:
                     intrvl = 1.0
                 fs = 1.0 / max(0.1, intrvl)
                 nyq = 0.5 * fs
@@ -112,20 +116,21 @@ class FlowMixin:
                 else:
                     for i in valid_indices:
                         self.flow_rates[i] = raw_flows[i]
-            except:
+            except Exception:  # filter failed: show the unfiltered flow rather than nothing
+                log.debug("Butterworth filter failed; showing unfiltered flow", exc_info=True)
                 for i in valid_indices:
                     self.flow_rates[i] = raw_flows[i]
 
         elif filter_type == "Adaptive":
             try:
                 rpm = float(self.ent_rpm.text())
-            except:
+            except ValueError:
                 rpm = 30.0
             if rpm <= 0:
                 rpm = 1.0
             try:
                 rollers = float(self.ent_rollers.text())
-            except:
+            except ValueError:
                 rollers = 3.0
             if rollers <= 0:
                 rollers = 1.0
@@ -134,7 +139,7 @@ class FlowMixin:
             period_sec = 1.0 / pulse_hz
             try:
                 intrvl = float(self.ent_interval.text())
-            except:
+            except ValueError:
                 intrvl = 1.0
             win = max(1, int(round(period_sec / max(0.1, intrvl))))
 
