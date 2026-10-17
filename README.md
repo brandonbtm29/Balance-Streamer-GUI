@@ -55,6 +55,8 @@ number and a unit on each line usually work with the Bonvoisin or Lachoi setting
 
 ## Install
 
+**Easiest:** double-click `Setup_Windows.bat` (Windows) or `Setup_Mac.command` (macOS) once. It creates the `.venv` folder and installs everything the app needs; run it again any time to repair or update the packages. The manual steps follow.
+
 You need **Python 3.11 or newer** ([python.org](https://www.python.org/downloads/)) and a USB or
 RS-232 cable for each balance.
 

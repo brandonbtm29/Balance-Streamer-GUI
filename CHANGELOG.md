@@ -5,6 +5,10 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ## [Unreleased]
 
+### Added
+- `Setup_Windows.bat` / `Setup_Mac.command`: one double-click creates the `.venv` and installs everything.
+- Dependabot keeps the GitHub Actions and Python dependencies up to date.
+
 ## [1.3.0] - 2026-10-15
 
 ### Added
