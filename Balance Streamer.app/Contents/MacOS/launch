@@ -1,12 +1,13 @@
 #!/bin/bash
 # Starts Balance Streamer without a Terminal window, using the .venv in this folder.
-# For troubleshooting, Launch_Mac.command runs the app with its messages shown in Terminal.
+# The first time, double-click Launch_Mac.command instead: it sets the app up (creates the .venv).
+# For troubleshooting, Troubleshoot_Mac.command runs the app with its messages shown in Terminal.
 DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 PY="$DIR/.venv/bin/python"
 if [ ! -x "$PY" ]; then
   osascript -e 'on run argv' -e 'display alert (item 1 of argv) message (item 2 of argv) as critical' -e 'end run' \
     "Balance Streamer isn't set up yet" \
-    "Create its virtual environment first (see Install in the README), then open it again."
+    "Double-click Launch_Mac.command in the Balance Streamer folder. The first time, it sets the app up (this takes a minute or two) and then starts it."
   exit 1
 fi
 cd "$DIR" || exit 1
