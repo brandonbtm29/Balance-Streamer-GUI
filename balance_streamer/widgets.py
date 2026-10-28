@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QListWidget,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -98,18 +99,23 @@ class ReorderPanelsWidget(QWidget):
         layout.addLayout(btn_layout)
 
     def apply(self):
+        """Save the new panel order and restart, the same way as Update and Restart."""
+        warning = self.app_ref.recording_warning()
+        if warning:  # ask first, as Update and Restart does
+            answer = QMessageBox.question(
+                self,
+                "Apply and Restart",
+                "The new panel order is used after a restart. Restart now?" + warning,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
         new_left = [self.list_left.item(i).text() for i in range(self.list_left.count())]
         new_right = [self.list_right.item(i).text() for i in range(self.list_right.count())]
         self.app_ref.config["left_panel_order"] = new_left
         self.app_ref.config["right_panel_order"] = new_right
         self.app_ref.save_config()
-        pass
-
-        # Restart the app
-        import sys
-
-        from PyQt6.QtCore import QProcess
-        from PyQt6.QtWidgets import QApplication
-
-        QProcess.startDetached(sys.executable, sys.argv)
-        QApplication.instance().quit()
+        # The usual restart: saves the tabs and window layout, disconnects every balance so the new
+        # copy can open their ports, releases the single-instance lock, then starts the new copy.
+        self.app_ref.restart_app()

@@ -1,68 +1,31 @@
 """Write problems to logs/balance_streamer.log in the data folder.
 
-The app used to skip over many errors without a trace. They are now written to a
-log file (kept small: three files of 1 MB), so a failed backup or a balance that
-stopped answering can be found afterwards.
+This uses crash_log.py, the same file as in the other UAkron lab apps. It keeps the log
+small (three files of 1 MB), logs errors nobody caught, also from background threads such
+as the serial readers, and shows them in a dialog instead of closing the app: PyQt6
+otherwise ends the program when an error escapes a button handler or timer, which would
+stop a recording. A hard crash (in a driver or in Qt itself) is written to
+logs/balance_streamer.fatal.log.
 """
 
-import logging
-import logging.handlers
 import os
-import sys
-import time
 
-LOG_DIR = "logs"  # relative to the data folder, which is the working directory
-LOG_FILE = "balance_streamer.log"
+import crash_log
 
+from . import __version__
+from .paths import DATA_DIR
 
-def setup_logging(level=logging.INFO):
-    """Send log messages to the log file (and the console). Safe to call twice."""
-    root = logging.getLogger()
-    if any(getattr(h, "_balance_streamer", False) for h in root.handlers):
-        return
-    os.makedirs(LOG_DIR, exist_ok=True)
-    handler = logging.handlers.RotatingFileHandler(
-        os.path.join(LOG_DIR, LOG_FILE), maxBytes=1_000_000, backupCount=2, encoding="utf-8"
-    )
-    handler._balance_streamer = True
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
-    root.addHandler(handler)
-    if sys.stderr is not None:  # pythonw (the desktop shortcut on Windows) has no console
-        console = logging.StreamHandler()
-        console._balance_streamer = True
-        console.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
-        root.addHandler(console)
-    root.setLevel(level)
+LOG_NAME = "balance_streamer"
+LOG_DIR = os.path.join(DATA_DIR, "logs")
 
 
-def install_excepthook():
-    """Log errors nobody caught and tell the user, instead of closing the app.
+def setup_logging():
+    """Start the log file and the error handlers. Returns the log file's path. Safe to call twice.
 
-    PyQt6 ends the program when an error escapes a button handler or timer. During a
-    recording that would stop logging, so the error is shown and recording goes on.
+    If the data folder can't be written to (for example a missing or read-only SyncThing
+    folder), the log goes to the per-user log folder instead, so a start-up error still
+    leaves a trace. Returns None only if neither folder can be written to.
     """
-
-    last_shown = [0.0]
-
-    def hook(exc_type, exc, tb):
-        if issubclass(exc_type, KeyboardInterrupt):
-            sys.__excepthook__(exc_type, exc, tb)
-            return
-        logging.getLogger("balance_streamer").critical("Unexpected error", exc_info=(exc_type, exc, tb))
-        if time.monotonic() - last_shown[0] < 60:  # an error in a timer would repeat every tick
-            return
-        last_shown[0] = time.monotonic()
-        try:
-            from PyQt6.QtWidgets import QApplication, QMessageBox
-
-            if QApplication.instance() is not None:
-                QMessageBox.warning(
-                    None,
-                    "Unexpected error",
-                    f"Something went wrong: {exc}\n\n"
-                    f"Details were saved to {os.path.abspath(os.path.join(LOG_DIR, LOG_FILE))}.",
-                )
-        except Exception:  # noqa: S110 - never let the error handler itself crash the app
-            pass
-
-    sys.excepthook = hook
+    return crash_log.setup(LOG_NAME, LOG_DIR, __version__) or crash_log.setup(
+        LOG_NAME, crash_log.user_log_dir("Balance Streamer"), __version__
+    )
