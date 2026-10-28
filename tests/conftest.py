@@ -14,11 +14,34 @@ from pathlib import Path
 
 import pytest
 
+
+def _offscreen_platform(config_dir, run_dir):
+    """Qt's headless platform, with a 1920x1080 screen instead of its default 800x800.
+
+    The windows' minimum size is bigger than 800x800, so on the default screen Qt shrinks a
+    restored window and its dividers can't be dragged, which made the window-size tests fail
+    on Windows CI. Qt splits the platform string on ':', so the path goes without its drive
+    letter; that only works on the drive the tests run from, otherwise the default screen is used.
+    """
+    config = Path(config_dir) / "offscreen_screen.json"
+    if not config.exists():
+        config.write_text(
+            '{"screens": [{"name": "Test screen", "x": 0, "y": 0, "width": 1920, "height": 1080,'
+            ' "logicalDpi": 96, "logicalBaseDpi": 96, "dpr": 1}]}',
+            encoding="utf-8",
+        )
+    drive, path = os.path.splitdrive(str(config))
+    if drive.lower() != os.path.splitdrive(str(run_dir))[0].lower() or ":" in path:
+        return "offscreen"
+    return "offscreen:configfile=" + path.replace("\\", "/")
+
+
 _START_DIR = os.getcwd()
 _TMP = Path(tempfile.mkdtemp(prefix="balance-streamer-tests-"))
 os.environ["UAKRON_APP_DATA_DIR"] = str(_TMP / "data")
 os.environ["UAKRON_SETTINGS_DIR"] = str(_TMP / "settings")
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+if os.environ.get("QT_QPA_PLATFORM", "offscreen") == "offscreen":  # CI sets plain "offscreen"
+    os.environ["QT_QPA_PLATFORM"] = _offscreen_platform(_TMP, _TMP)
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
