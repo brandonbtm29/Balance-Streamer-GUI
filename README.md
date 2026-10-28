@@ -37,8 +37,11 @@ the run is still going. It was built for column experiments in a polymer enginee
   **Check for Updates** installs the newest release and restarts.
 - **Desktop icon**: the first time it starts on a computer, the app offers to put a Balance Streamer
   icon on the desktop, and it refreshes that icon after every update. No terminal window opens.
-- **Error log**: problems are written to `logs/balance_streamer.log` in the data folder instead of
-  being skipped silently.
+- **One copy at a time**: opening the app again brings the open window to the front, instead of
+  starting a second copy that would fight over the same balances.
+- **Error log and diagnostics**: problems are written to `logs/balance_streamer.log` in the data
+  folder instead of being skipped silently. **Open Log Folder** and **Copy Diagnostics** (Settings →
+  Application Settings → Troubleshooting) make a bug report one paste.
 
 ## Supported balances
 
@@ -55,7 +58,11 @@ number and a unit on each line usually work with the Bonvoisin or Lachoi setting
 
 ## Install
 
-**Easiest:** double-click `Setup_Windows.bat` (Windows) or `Setup_Mac.command` (macOS) once. It creates the `.venv` folder and installs everything the app needs; run it again any time to repair or update the packages. The manual steps follow.
+**Easiest:** download the code (step 1 below), then double-click `Launch_Windows.bat` (Windows) or
+`Launch_Mac.command` (macOS). The first time, it sets itself up: it creates the `.venv` folder and
+installs everything the app needs (this takes a minute or two), then starts the app. After that it
+just starts the app. `Setup_Windows.bat` and `Setup_Mac.command` are for repairs: run one if the app
+says its packages are missing or broken. The manual steps follow.
 
 You need **Python 3.11 or newer** ([python.org](https://www.python.org/downloads/)) and a USB or
 RS-232 cable for each balance.
@@ -79,15 +86,21 @@ RS-232 cable for each balance.
    ```
 3. Start it, with no terminal window:
    - **Windows**: double-click `Launch_Windows.bat`.
-   - **macOS**: double-click **Balance Streamer.app** in the app's folder.
+   - **macOS**: double-click `Launch_Mac.command` (its Terminal window closes once the app has
+     started), or **Balance Streamer.app** in the app's folder.
 4. The first time, the app asks whether to put a **Balance Streamer icon on your desktop**. Say yes,
    and from then on start it from there. (On a Mac you can also drag the desktop app to the Dock.)
    You can make the icon later with **Settings → Application Settings → Create Desktop Shortcut**.
 
-If the app doesn't open, it shows a message saying why and writes `startup-error.log` in the app's
-folder. `Launch_Mac.command` runs the app with its messages visible in Terminal, which helps when
-asking for help. If macOS says **Balance Streamer.app** "can't be opened" (this can happen with a
-ZIP download), right-click it and choose **Open** once.
+If the app doesn't open, the launcher or a message box says why, and the details are written to
+`logs/balance_streamer.log` in the data folder (see [Where files go](#where-files-go)).
+`Troubleshoot_Windows.bat` and `Troubleshoot_Mac.command` run the app with its messages visible in a
+console window, which helps when asking for help. Once the app is open, **Settings → Application
+Settings → Troubleshooting → Copy Diagnostics** copies the version, your system, where the app keeps
+its files, your balances and ports, and the end of the log, ready to paste into a GitHub issue or an
+email. **Open Log Folder** next to it shows the log files. If macOS says **Balance Streamer.app** or a
+`.command` file "can't be opened" (this can happen with a ZIP download), right-click it and choose
+**Open** once.
 
 If your computer doesn't list the balance's port, install the driver for your USB-serial adapter
 (for example FTDI).
@@ -143,7 +156,14 @@ The app keeps its code and its data apart:
 - **Settings** (`config.json`): in the app's own folder by default. In
   **Settings → Application Settings → Settings Folder** you can move them, for example into the data
   folder so several computers share them. `UAKRON_SETTINGS_DIR` overrides this.
+- **Window size, position and dividers**: kept per computer in `window_state.json` in the app's own
+  folder (gitignored). They never move to the settings folder, because each computer has its own
+  screens.
 - **Log**: `logs/balance_streamer.log` in the data folder (three files of up to 1 MB are kept).
+  Errors at start-up go there too, and a hard crash (in a driver or in Qt) leaves
+  `logs/balance_streamer.fatal.log`. If the data folder can't be written to, the logs go to
+  `%LOCALAPPDATA%\Balance Streamer\logs` (Windows) or `~/Library/Logs/Balance Streamer` (Mac).
+  **Open Log Folder** in Settings → Application Settings → Troubleshooting opens the right folder.
   If `config.json` can't be read, it is kept as `config.json.unreadable` and the app starts with
   default settings.
 
@@ -180,7 +200,7 @@ The code is in the `balance_streamer` package:
 
 | Module | What's in it |
 |---|---|
-| `app.py` | `main()`: moves into the data folder, sets up logging and the theme, opens the window |
+| `app.py` | `main()`: starts the log, moves into the data folder, makes sure only one copy runs, sets up the theme, opens the window |
 | `paths.py` | Where data and settings live |
 | `main_window.py` | The window: a Settings tab plus one tab per balance |
 | `balance_tab.py` | One balance tab (layout, connection, recording, chart and table) |
@@ -189,10 +209,13 @@ The code is in the `balance_streamer` package:
 | `settings_tab.py`, `widgets.py` | The Settings tab and small shared widgets |
 | `updater.py`, `update_panel.py` | Checking GitHub and updating a git copy |
 | `shortcut.py`, `shortcut_panel.py` | Desktop icon: create it, offer it on first start, refresh it after updates |
+| `diagnostics_panel.py` | The Troubleshooting box: Open Log Folder and Copy Diagnostics |
 | `theme.py`, `logs.py` | Dark/light theme and the error log |
 
 `multi_balance_stream.py` only starts the app; it stays for the launchers and `build_app.py`.
-`settings_location.py` is shared, unchanged, with the other UAkron lab apps.
+`settings_location.py` (settings folder), `crash_log.py` (log file and error handling),
+`single_instance.py` (one copy at a time) and `diagnostics.py` (Copy Diagnostics) are shared,
+unchanged, with the other UAkron lab apps.
 
 The tests point the app at a temporary data folder, so they never touch your real data. CI runs
 them on Windows, macOS and Linux with Python 3.11 to 3.13, and scans the history for secrets.
