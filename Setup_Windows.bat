@@ -1,6 +1,7 @@
 @echo off
-rem One-click setup for Balance Streamer: creates this folder's own Python environment (.venv)
-rem and installs everything the app needs. Run it again any time to repair or update it.
+rem Repair or reinstall Balance Streamer. Launch_Windows.bat sets the app up by itself the first
+rem time, so this is only needed when something is broken: it creates this folder's own Python
+rem environment (.venv) if it is missing and reinstalls everything the app needs. Safe to run any time.
 cd /d "%~dp0"
 echo Setting up Balance Streamer in %CD%
 echo.

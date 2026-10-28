@@ -7,7 +7,48 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ### Added
 - `Setup_Windows.bat` / `Setup_Mac.command`: one double-click creates the `.venv` and installs everything.
+  Since the launchers now do this by themselves (below), these are for repairing or reinstalling.
+- **The launchers set the app up the first time.** Double-click `Launch_Windows.bat` or
+  `Launch_Mac.command` on a new computer: it creates the `.venv` folder and installs what the app
+  needs (this takes a minute or two), then starts the app. One file to double-click, first time and
+  every time. If something goes wrong it shows why and waits for you instead of closing.
+- **Only one copy at a time.** Opening Balance Streamer while it is already running brings the open
+  window to the front, instead of starting a second copy that would fight over the same balances.
+  Restart and Update and Restart still work as before.
+- **Open Log Folder** and **Copy Diagnostics** in Settings → Application Settings → Troubleshooting.
+  Copy Diagnostics copies the app version, your system, where the app keeps its files, how many
+  balances are set up with their brands and ports, and the end of the log, ready to paste into a
+  GitHub issue or an email. Your home folder is shortened to `~` and anything that looks like a
+  password is blanked.
+- `Troubleshoot_Windows.bat` and `Troubleshoot_Mac.command` run the app with its messages shown in a
+  console window, for when something goes wrong.
 - Dependabot keeps the GitHub Actions and Python dependencies up to date.
+
+### Changed
+- `Launch_Mac.command` now starts the app without keeping Terminal open: its window closes once the
+  app has started. Showing the app's messages in Terminal moved to `Troubleshoot_Mac.command`.
+- `Launch_Windows.bat` first checks that the app's packages work. If they don't, it says why in a
+  window that stays open, instead of nothing happening.
+- **Where the logs go:** still `logs/balance_streamer.log` in the data folder, which now also gets
+  errors at start-up. They used to go to `startup-error.log` in the app's folder; that file is no
+  longer written and can be deleted. A hard crash (in a driver or in Qt) is written to
+  `logs/balance_streamer.fatal.log`. If the data folder can't be written to, the logs go to
+  `%LOCALAPPDATA%\Balance Streamer\logs` on Windows or `~/Library/Logs/Balance Streamer` on a Mac.
+- **Each computer remembers its own window size and position**, and the dividers in each balance
+  tab. They used to be saved in `config.json`, so with a shared settings folder a Mac's layout was
+  applied on the Windows PC. They are now in `window_state.json` in the app's folder. The first
+  time, the app opens with the size and position the older version saved.
+
+### Fixed
+- **Apply and Restart** (Settings → Panel Management) now restarts the way Update and Restart does:
+  it saves your tabs and disconnects the balances first, so the restarted app can open their ports.
+  If a recording is running, it asks before restarting.
+- If the app couldn't finish starting, it sometimes crashed while closing, after its message saying
+  why, and left a confusing entry in `logs/balance_streamer.fatal.log`. It now closes normally.
+- `Balance Streamer.app` in the app's folder: its "isn't set up yet" message now says to
+  double-click `Launch_Mac.command`, which sets the app up.
+- On Windows, saving settings sometimes failed with "Access is denied" when SyncThing or antivirus
+  had `config.json` open for a moment, so the change was lost. The app now retries for about a second.
 
 ## [1.3.0] - 2026-10-15
 

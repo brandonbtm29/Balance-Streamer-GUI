@@ -44,6 +44,7 @@ Thumbs.db
 CLAUDE.local.md
 .claude/settings.local.json
 
-# --- Per-computer state (desktop shortcut) ---
+# --- Per-computer state (desktop shortcut; window size, position and dividers) ---
 local_state.json
+window_state.json
 startup-error.log

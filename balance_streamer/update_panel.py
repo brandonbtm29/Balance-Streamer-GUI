@@ -161,13 +161,7 @@ class UpdatePanel(QGroupBox):
             self._update(release)
 
     def _recording_warning(self):
-        recording = [t.tab_name for t in self.app_ref.tab_objects if getattr(t, "recording", False)]
-        if not recording:
-            return ""
-        return (
-            "\n\nRecording is running in: " + ", ".join(recording) + ". It will stop; the data so far is "
-            "kept in the backup file and can be brought back with Recover Session."
-        )
+        return self.app_ref.recording_warning()  # shared with Apply and Restart (panel order)
 
     # --- updating ------------------------------------------------------------------------
 

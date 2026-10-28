@@ -49,7 +49,15 @@ balance-streamer = "balance_streamer.app:main"
 path = "balance_streamer/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-only-include = ["balance_streamer", "multi_balance_stream.py", "settings_location.py"]
+only-include = [
+    "balance_streamer",
+    "multi_balance_stream.py",
+    # shared with the other UAkron lab apps (identical copies)
+    "settings_location.py",
+    "crash_log.py",
+    "single_instance.py",
+    "diagnostics.py",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

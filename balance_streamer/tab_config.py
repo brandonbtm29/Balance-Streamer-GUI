@@ -2,6 +2,7 @@
 
 import datetime
 
+from PyQt6.QtCore import QByteArray
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QDialog,
@@ -15,9 +16,24 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+# The tab's dividers: saved per computer in window_state.json (see main_window.py). Older
+# versions kept them in config.json under the same names.
+SPLITTERS = {"splitter_state": "splitter", "mid_splitter_state": "mid_splitter"}
+
 
 class TabConfigMixin:
     """Part of BalanceTab: saving and loading a tab's settings, in the app config and as named configurations."""
+
+    def layout_state(self):
+        """This tab's dividers, for window_state.json."""
+        return {
+            key: getattr(self, attr).saveState().toHex().data().decode() for key, attr in SPLITTERS.items()
+        }
+
+    def restore_layout(self, layout):
+        for key, attr in SPLITTERS.items():
+            if isinstance(layout.get(key), str):
+                getattr(self, attr).restoreState(QByteArray.fromHex(layout[key].encode()))
 
     def save_tab_settings(self):
         if not self.app:
@@ -29,6 +45,7 @@ class TabConfigMixin:
                 "port": self.combo_com.currentText(),
                 "unsaved": False,
             }
+        old = kb[self.tab_name].get("settings") or {}
         kb[self.tab_name]["settings"] = {
             "interval": self.ent_interval.text(),
             "savgol_win": self.ent_savgol_win.text(),
@@ -56,10 +73,12 @@ class TabConfigMixin:
             "ymax": self.ent_ymax.text(),
             "flowmin": self.ent_flowmin.text(),
             "flowmax": self.ent_flowmax.text(),
-            "splitter_state": self.splitter.saveState().toHex().data().decode(),
-            "mid_splitter_state": self.mid_splitter.saveState().toHex().data().decode(),
             "col_widths": [self.table.columnWidth(i) for i in range(self.table.columnCount())],
         }
+        # The dividers are now saved per computer; keep any old values for older versions.
+        for key in SPLITTERS:
+            if key in old:
+                kb[self.tab_name]["settings"][key] = old[key]
 
         if hasattr(self, "token_inputs"):
             kb[self.tab_name]["settings"]["tab_tokens"] = {k: v.text() for k, v in self.token_inputs.items()}
@@ -68,6 +87,9 @@ class TabConfigMixin:
         if not self.app:
             return
         kb = self.app.config.get("known_balances", {})
+        # Dividers: this computer's own, or else the ones an older version saved in config.json.
+        old = kb.get(self.tab_name, {}).get("settings") or {}
+        self.restore_layout(self.app.tab_layout(self.tab_name) or old)
         if self.tab_name in kb and "settings" in kb[self.tab_name]:
             settings = kb[self.tab_name]["settings"]
             if "interval" in settings:
@@ -126,14 +148,6 @@ class TabConfigMixin:
             if "save_on_pause" in settings:
                 self.chk_save_on_pause.setChecked(settings["save_on_pause"])
 
-            if "splitter_state" in settings:
-                from PyQt6.QtCore import QByteArray
-
-                self.splitter.restoreState(QByteArray.fromHex(settings["splitter_state"].encode()))
-            if "mid_splitter_state" in settings:
-                from PyQt6.QtCore import QByteArray
-
-                self.mid_splitter.restoreState(QByteArray.fromHex(settings["mid_splitter_state"].encode()))
             if "col_widths" in settings:
                 for i, w in enumerate(settings["col_widths"]):
                     if i < self.table.columnCount():

@@ -2,6 +2,7 @@
 
 import logging
 import os
+import sys
 
 from balance_streamer.paths import CONFIG_DIR
 
@@ -38,21 +39,39 @@ def test_backup_scan_skips_damaged_rows(tab):
     assert sessions[0]["points"] == 2
 
 
-def test_log_file_is_written(tmp_path, monkeypatch):
+def test_log_file_is_written(data_dir):
+    import crash_log
     from balance_streamer import logs
 
-    monkeypatch.chdir(tmp_path)
-    root = logging.getLogger()
-    before = list(root.handlers)
+    crash_log._reset_for_tests()
     try:
-        logs.setup_logging()
+        path = logs.setup_logging()
+        assert path == os.path.join(str(data_dir), "logs", "balance_streamer.log")
+        assert logs.setup_logging() == path  # safe to call twice
+        assert sys.excepthook.__module__ == "crash_log"  # the only hook: crash_log's
         logging.getLogger("balance_streamer.test").warning("hello from the test")
-        for h in root.handlers:
+        for h in logging.getLogger().handlers:
             h.flush()
-        text = (tmp_path / "logs" / "balance_streamer.log").read_text(encoding="utf-8")
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        assert "balance_streamer" in text and "starting" in text
         assert "hello from the test" in text
     finally:
-        for h in list(root.handlers):
-            if h not in before:
-                root.removeHandler(h)
-                h.close()
+        crash_log._reset_for_tests()
+
+
+def test_log_falls_back_to_the_user_folder(tmp_path, monkeypatch):
+    """A data folder that can't be written to (e.g. read-only SyncThing) still leaves a log."""
+    import crash_log
+    from balance_streamer import logs
+
+    blocker = tmp_path / "not_a_folder"
+    blocker.write_text("x")
+    monkeypatch.setattr(logs, "LOG_DIR", str(blocker / "logs"))
+    monkeypatch.setattr(crash_log, "user_log_dir", lambda name: str(tmp_path / "user" / name / "logs"))
+    crash_log._reset_for_tests()
+    try:
+        path = logs.setup_logging()
+        assert path == str(tmp_path / "user" / "Balance Streamer" / "logs" / "balance_streamer.log")
+    finally:
+        crash_log._reset_for_tests()

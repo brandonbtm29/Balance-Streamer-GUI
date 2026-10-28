@@ -1,6 +1,7 @@
 #!/bin/bash
-# One-click setup for Balance Streamer on macOS: creates this folder's own Python environment
-# (.venv) and installs everything the app needs. Run it again any time to repair or update it.
+# Repair or reinstall Balance Streamer on macOS. Launch_Mac.command sets the app up by itself the
+# first time, so this is only needed when something is broken: it creates this folder's own Python
+# environment (.venv) if it is missing and reinstalls everything the app needs. Safe to run any time.
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 fail() { echo; echo "$1"; read -r -p "Press Enter to close"; exit 1; }
 new_enough() { "$1" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null; }
