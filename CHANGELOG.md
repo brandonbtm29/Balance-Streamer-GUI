@@ -5,6 +5,8 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-28
+
 ### Added
 - `Setup_Windows.bat` / `Setup_Mac.command`: one double-click creates the `.venv` and installs everything.
   Since the launchers now do this by themselves (below), these are for repairing or reinstalling.
@@ -159,7 +161,8 @@ version number, tests and a proper README.
 Earlier versions were co-developed with Google Gemini in Antigravity; development continues with
 Claude (Anthropic).
 
-[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.1.0...v1.1.1
