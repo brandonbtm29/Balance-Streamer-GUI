@@ -81,4 +81,5 @@ ignore = [
 "balance_streamer/shortcut.py" = ["S603", "S607", "S103"]
 # build_app.py runs pip and PyInstaller with fixed arguments.
 "build_app.py" = ["S603", "S607"]
-"tests/*" = ["E402", "S603", "S607"]  # tests run git and PowerShell with fixed arguments
+# Tests run git and PowerShell with fixed arguments, and use random only for test data.
+"tests/*" = ["E402", "S603", "S607", "S311"]
