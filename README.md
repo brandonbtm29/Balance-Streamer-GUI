@@ -39,8 +39,8 @@ the run is still going. It was built for column experiments in a polymer enginee
   icon on the desktop, and it refreshes that icon after every update. No terminal window opens.
 - **One copy at a time**: opening the app again brings the open window to the front, instead of
   starting a second copy that would fight over the same balances.
-- **Error log and diagnostics**: problems are written to `logs/balance_streamer.log` in the data
-  folder instead of being skipped silently. **Open Log Folder** and **Copy Diagnostics** (Settings →
+- **Error log and diagnostics**: problems are written to a log in the data folder (one folder per
+  computer) instead of being skipped silently. **Open Log Folder** and **Copy Diagnostics** (Settings →
   Application Settings → Troubleshooting) make a bug report one paste.
 
 ## Supported balances
@@ -93,7 +93,7 @@ RS-232 cable for each balance.
    You can make the icon later with **Settings → Application Settings → Create Desktop Shortcut**.
 
 If the app doesn't open, the launcher or a message box says why, and the details are written to
-`logs/balance_streamer.log` in the data folder (see [Where files go](#where-files-go)).
+the log in the data folder (see [Where files go](#where-files-go)).
 `Troubleshoot_Windows.bat` and `Troubleshoot_Mac.command` run the app with its messages visible in a
 console window, which helps when asking for help. Once the app is open, **Settings → Application
 Settings → Troubleshooting → Copy Diagnostics** copies the version, your system, where the app keeps
@@ -128,7 +128,10 @@ Version 1.0.0 has no update button: update it once by running `git pull` in the 
 
 1. Plug in the balance and set it up as in the table above.
 2. In the balance tab, pick the **Balance Brand** and **COM Port** (Refresh Ports if it's missing),
-   then **Connect**.
+   then **Connect**. Each computer remembers the port it used for each balance, so the same tab can
+   be COM12 on Windows and `/dev/cu.usbserial-…` on a Mac. If a balance's port isn't on this
+   computer, the tab says so and waits for you to pick one; it never connects to another port by
+   itself. Two tabs can't use the same port.
 3. Press **▶** to start recording. Press it again to stop.
 4. Press the Excel button to save, or set up **Auto-Save Settings** so it saves for you.
 5. Add a tab for each extra balance with **Tab Management → Add Tab**.
@@ -138,7 +141,7 @@ The buttons across the top of each balance tab, left to right (hover over one to
 | Button | What it does |
 |---|---|
 | Start / Stop Recording | Start or stop logging readings |
-| Clear Data | Clear the readings in this tab and start a new run |
+| Clear Data | Clear the readings in this tab and start a new run (asks first if they aren't saved to Excel) |
 | Save to Excel | Save the run to Excel (asks where) |
 | Quick Save | Overwrite the last saved file without asking |
 | Tare Balance | Send a tare command (`T`) to the balance |
@@ -156,12 +159,15 @@ The app keeps its code and its data apart:
 - **Settings** (`config.json`): in the app's own folder by default. In
   **Settings → Application Settings → Settings Folder** you can move them, for example into the data
   folder so several computers share them. `UAKRON_SETTINGS_DIR` overrides this.
-- **Window size, position and dividers**: kept per computer in `window_state.json` in the app's own
-  folder (gitignored). They never move to the settings folder, because each computer has its own
-  screens.
-- **Log**: `logs/balance_streamer.log` in the data folder (three files of up to 1 MB are kept).
-  Errors at start-up go there too, and a hard crash (in a driver or in Qt) leaves
-  `logs/balance_streamer.fatal.log`. If the data folder can't be written to, the logs go to
+- **Window size, position, dividers and each balance's port**: kept per computer in
+  `window_state.json` in the app's own folder (gitignored). They never move to the settings folder,
+  because each computer has its own screens and port names.
+- **Log**: `logs/<computer name>/balance_streamer.log` in the data folder (three files of up to 1 MB
+  are kept). Each computer has its own folder, so SyncThing never has two computers writing the same
+  file. Errors at start-up go there too, and a hard crash (in a driver or in Qt) leaves
+  `balance_streamer.fatal.log` next to it. On Windows that file sometimes also gets a report for an
+  error Windows handled itself (for example `code 0x8001010d`); if a later line says
+  `exited normally`, the app didn't crash. If the data folder can't be written to, the logs go to
   `%LOCALAPPDATA%\Balance Streamer\logs` (Windows) or `~/Library/Logs/Balance Streamer` (Mac).
   **Open Log Folder** in Settings → Application Settings → Troubleshooting opens the right folder.
   If `config.json` can't be read, it is kept as `config.json.unreadable` and the app starts with
@@ -175,7 +181,8 @@ Neither data nor settings are ever stored in the repository; both are in `.gitig
 python build_app.py
 ```
 
-This uses PyInstaller to make `dist/Balance_Streamer/`, which runs without Python installed.
+This installs PyInstaller (the everyday install doesn't include it) and uses it to make
+`dist/Balance_Streamer/`, which runs without Python installed.
 Build on the system you want to run it on (Windows for an `.exe`, macOS for a Mac app).
 
 ## Good to know
@@ -184,13 +191,16 @@ Build on the system you want to run it on (Windows for an `.exe`, macOS for a Ma
   to mL/min with your liquid's density.
 - A balance tab only records while you press ▶. Being connected isn't enough.
 - Closing a tab forgets its saved connection settings.
+- Closing the window while a balance is recording, or has readings not saved to Excel, asks first.
+  If you close anyway, the readings stay in the backup file and **Recover Session** brings them back.
+- Readings are timed when they arrive from the balance, so a busy window can't shift their times.
 - The app only goes online to ask GitHub for the latest release: at startup (unless you turn that off) and when you press **Check for Updates**.
 
 ## Development
 
 ```bash
 python -m pip install -e ".[dev]"
-pytest              # headless Qt tests: parsers, flow rates, export, errors, updater
+pytest              # headless Qt tests: parsers, flow rates, ports, export, errors, updater
 ruff check .
 ruff format .
 python -m balance_streamer   # run from source
