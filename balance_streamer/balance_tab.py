@@ -7,8 +7,6 @@ import os
 import time
 
 import matplotlib
-import serial
-import serial.tools.list_ports
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -41,7 +39,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from .export import ExportMixin
 from .flow import FlowMixin
 from .recovery import RecoveryMixin
-from .serial_worker import SerialWorker
+from .serial_worker import SerialWorker, available_ports
 from .tab_config import TabConfigMixin
 from .widgets import CollapsibleBox
 
@@ -115,7 +113,7 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
 
         self.btn_clear = QPushButton()
         self.btn_clear.setStyleSheet("background-color: #e74c3c; color: white;")
-        self.btn_clear.clicked.connect(self.clear_data)
+        self.btn_clear.clicked.connect(self.request_clear_data)
         self.btn_clear.setToolTip("Clear Data")
 
         self.btn_save_excel = QPushButton()
@@ -613,12 +611,32 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
             self.refresh_tokens()
 
     def refresh_com_ports(self):
-        ports = [p.device for p in serial.tools.list_ports.comports()]
+        previous = self.combo_com.currentText()
+        nothing_chosen = self.combo_com.currentIndex() == -1 and self.combo_com.count() > 0
+        ports = available_ports()
         self.combo_com.clear()
         if ports:
             self.combo_com.addItems(ports)
+            if previous in ports:
+                self.combo_com.setCurrentText(previous)
+            elif nothing_chosen:
+                self.combo_com.setCurrentIndex(-1)  # still waiting for the user to pick one
         else:
             self.combo_com.addItem("No Ports Found")
+
+    def port_choices(self):
+        """The ports listed in this tab's port box."""
+        items = [self.combo_com.itemText(i) for i in range(self.combo_com.count())]
+        return [p for p in items if p and p != "No Ports Found"]
+
+    def show_missing_port(self, port):
+        """The saved port isn't on this computer: pick nothing and say so (no auto-connect)."""
+        self.combo_com.setCurrentIndex(-1)
+        self.combo_com.setPlaceholderText(f"{port} isn't here: choose a port")
+        self.lbl_status.setText(
+            f"Status: {port} isn't on this computer. Choose the balance's port, then Connect."
+        )
+        self.lbl_status.setStyleSheet("color: #e67e22; font-weight: bold;")
 
     def toggle_flow_axis(self):
         self.ax_flow.set_visible(self.chk_show_flow.isChecked())
@@ -648,6 +666,15 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
         if self.serial_thread and self.serial_thread.isRunning():
             self.serial_thread.stop()
             self.serial_thread.wait()
+
+        other = self.app.tab_using_port(port, exclude=self) if self.app else None
+        if other is not None:
+            message = f"{port} is already in use by the tab {other.tab_name!r}."
+            self.lbl_status.setText(f"Status: {message}")
+            self.lbl_status.setStyleSheet("color: #e74c3c;")
+            if not auto:
+                QMessageBox.warning(self, "Port in use", message + "\n\nDisconnect that tab first.")
+            return
 
         baud = 9600
         brand = self.combo_brand.currentText()
@@ -681,16 +708,21 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
         self.btn_connect.setText("Connect")
         self.btn_connect.setStyleSheet("background-color: #3498db; color: white; font-weight: bold;")
 
-    def on_data_received(self, value, unit):
+    def on_data_received(self, value, unit, read_time=None):
+        """A reading from the serial thread. read_time is when the line arrived (time.time())."""
         if not self.recording:
             return
+        if read_time is None:
+            read_time = time.time()
 
         try:
             intrvl = float(self.ent_interval.text())
         except ValueError:
             intrvl = 1.0
 
-        curr = time.time() - self.start_time
+        curr = read_time - self.start_time
+        if curr < 0:
+            return  # read just before Start Recording was pressed
         if (curr - self.last_recorded_time >= intrvl) or len(self.times_sec) == 0:
             self.last_recorded_time = curr
 
@@ -698,7 +730,7 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
             self.times_min.append(curr / 60.0)
             self.weights.append(value)
 
-            ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+            ts = datetime.datetime.fromtimestamp(read_time).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
             self.timestamps.append(ts)
 
             try:
@@ -876,6 +908,11 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
         if self.serial_thread:
             self.serial_thread.send_tare()
 
+    def request_clear_data(self):
+        """The Clear Data button: ask first if the readings aren't saved to Excel."""
+        if self._ok_to_drop_readings("Clear Data", "Clear the readings in this tab and start a new run?"):
+            self.clear_data()
+
     def clear_data(self):
         self.times_sec.clear()
         self.times_min.clear()
@@ -892,6 +929,9 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
         self.last_recorded_time = 0.0
         self.last_flow_calc_n = 0
         self.last_saved_filepath = None
+        self.unsaved_changes = False
+        if self.app:
+            self.app.set_unsaved_state(self.tab_name, False)
 
         self.line_mass.set_data([], [])
         self.line_flow.set_data([], [])
@@ -1014,8 +1054,26 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
         if self.recording:
             QMessageBox.warning(self, "Warning", "Stop recording before closing.")
             return
+        if not self._ok_to_drop_readings("Close Tab", "Close this tab?"):
+            return
         if self.app:
             self.app.close_tab(self)
+
+    def _ok_to_drop_readings(self, title, question):
+        """Ask before throwing away readings that aren't in an Excel file yet."""
+        if not (self.unsaved_changes and self.times_sec):
+            return True
+        if self.app is not None and not self.app.ask_before_closing:
+            return True
+        answer = QMessageBox.question(
+            self,
+            title,
+            f"{question}\n\n{self.tab_name} has {len(self.times_sec)} readings that aren't saved to Excel. "
+            "They stay in the backup file, and Recover Session can bring them back.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        return answer == QMessageBox.StandardButton.Yes
 
     def request_add_tab(self):
         if self.app:

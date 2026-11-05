@@ -47,6 +47,20 @@ def load_window_state():
     return data if isinstance(data, dict) else {}
 
 
+def pick_port(here, shared, available):
+    """Which port a saved balance should use on this computer, or None to wait for the user.
+
+    ``here`` is the port it last used on this computer, ``shared`` the one in the shared
+    settings (possibly saved on the other computer). A port that isn't on this computer is
+    never swapped for another one: that used to connect the tab to whatever port came first
+    (on a Mac, the built-in debug console) and save that port over the real one.
+    """
+    for port in (here, shared):
+        if port and port in available:
+            return port
+    return None
+
+
 def replace_file(src, dst, attempts=10, wait=0.1):
     """os.replace, retried briefly when Windows says "Access is denied".
 
@@ -156,8 +170,40 @@ class MultiBalanceApp(QMainWindow):
             tabs = {name: layout for name, layout in saved_tabs.items() if name in known}
         for tab in self.tab_objects:
             tabs[tab.tab_name] = tab.layout_state()
-        self._window_state = {"geometry": self.saveGeometry().toHex().data().decode(), "tabs": tabs}
+        self._window_state = {
+            "geometry": self.saveGeometry().toHex().data().decode(),
+            "tabs": tabs,
+            "ports": self._ports_here(),
+        }
         save_window_state(self._window_state)
+
+    # --- which port each balance uses, remembered per computer ---------------------------------
+    # COM12 on the Windows PC is /dev/cu.usbserial-... on the Mac, so the port a balance uses is
+    # kept per computer (in window_state.json) as well as in the shared config.json.
+
+    def _ports_here(self):
+        ports = self._window_state.get("ports")
+        known = self.config.get("known_balances", {})
+        return {n: p for n, p in ports.items() if n in known} if isinstance(ports, dict) else {}
+
+    def port_here(self, tab_name):
+        """The port this balance last used on this computer, or None."""
+        port = self._ports_here().get(tab_name)
+        return port if isinstance(port, str) and port else None
+
+    def remember_port_here(self, tab_name, port):
+        ports = self._ports_here()
+        ports[tab_name] = port
+        self._window_state["ports"] = ports
+        save_window_state(self._window_state)
+
+    def tab_using_port(self, port, exclude=None):
+        """The open balance tab that is connected to ``port``, if any."""
+        for tab in self.tab_objects:
+            worker = getattr(tab, "serial_thread", None)
+            if tab is not exclude and worker is not None and worker.isRunning() and worker.port == port:
+                return tab
+        return None
 
     # --- after the window is shown ----------------------------------------------------------
 
@@ -210,14 +256,42 @@ class MultiBalanceApp(QMainWindow):
         msg.exec()
 
     def recording_warning(self):
-        """Ask-first text for anything that restarts the app: which tabs are recording ("" if none)."""
+        """Ask-first text for closing or restarting: tabs that are recording or hold readings that
+        aren't in an Excel file yet ("" if none)."""
         recording = [t.tab_name for t in self.tab_objects if getattr(t, "recording", False)]
-        if not recording:
+        unsaved = [
+            t.tab_name
+            for t in self.tab_objects
+            if not getattr(t, "recording", False) and getattr(t, "unsaved_changes", False) and t.times_sec
+        ]
+        parts = []
+        if recording:
+            parts.append("Recording is running in: " + ", ".join(recording) + ". It will stop.")
+        if unsaved:
+            parts.append("Not saved to Excel yet: " + ", ".join(unsaved) + ".")
+        if not parts:
             return ""
         return (
-            "\n\nRecording is running in: " + ", ".join(recording) + ". It will stop; the data so far is "
-            "kept in the backup file and can be brought back with Recover Session."
+            "\n\n" + " ".join(parts) + " The readings so far are kept in the backup files and can be "
+            "brought back with Recover Session."
         )
+
+    ask_before_closing = True  # tests turn this off; they can't answer a dialog
+
+    def _ok_to_close(self):
+        """Ask before closing if a balance is recording or has readings not saved to Excel."""
+        warning = self.recording_warning()
+        if not warning or not self.ask_before_closing:
+            return True
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle("Close Balance Streamer?")
+        box.setText("Close Balance Streamer?" + warning)
+        close = box.addButton("Close Anyway", QMessageBox.ButtonRole.DestructiveRole)
+        box.addButton(QMessageBox.StandardButton.Cancel)
+        box.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        box.exec()
+        return box.clickedButton() is close
 
     def restart_app(self):
         """Save everything, let go of the balances and start a new copy of the app."""
@@ -256,14 +330,23 @@ class MultiBalanceApp(QMainWindow):
             log.exception("Couldn't save settings to %s", self.config_path)
 
     def save_connection(self, name, brand, port):
-        if "known_balances" not in self.config:
-            self.config["known_balances"] = {}
-        self.config["known_balances"][name] = {"brand": brand, "port": port, "unsaved": False}
+        known = self.config.setdefault("known_balances", {})
+        entry = known.get(name) if isinstance(known.get(name), dict) else {}
+        # Update the entry rather than replace it: replacing it dropped the tab's saved settings.
+        entry.update({"brand": brand, "port": port, "unsaved": False})
+        known[name] = entry
         self.save_config()
+        self.remember_port_here(name, port)
 
     def set_unsaved_state(self, name, state):
-        if "known_balances" in self.config and name in self.config["known_balances"]:
-            self.config["known_balances"][name]["unsaved"] = state
+        """Mark a balance as having data that isn't in an Excel file yet.
+
+        Saved only when the value changes. It used to rewrite config.json (in SyncThing) on every
+        single reading, which also made Windows refuse the save now and then ("Access is denied").
+        """
+        entry = self.config.get("known_balances", {}).get(name)
+        if isinstance(entry, dict) and entry.get("unsaved") != state:
+            entry["unsaved"] = state
             self.save_config()
 
     def add_tab(self, name=None):
@@ -284,8 +367,12 @@ class MultiBalanceApp(QMainWindow):
 
         tab = BalanceTab(app=self, tab_name=unique_name)
         tab.combo_brand.setCurrentText(brand)
+        saved = self.port_here(name) or port
+        port = pick_port(self.port_here(name), port, tab.port_choices())
         if port:
             tab.combo_com.setCurrentText(port)
+        elif saved:
+            tab.show_missing_port(saved)
 
         tab.load_tab_settings()
 
@@ -324,8 +411,11 @@ class MultiBalanceApp(QMainWindow):
                     log.warning("Couldn't rename backup %s to %s", old_backup, tab.backup_path, exc_info=True)
 
             if old_name in self.config.get("known_balances", {}):
+                port_here = self.port_here(old_name)
                 self.config["known_balances"][new_name] = self.config["known_balances"].pop(old_name)
                 self.save_config()
+                if port_here:
+                    self.remember_port_here(new_name, port_here)
 
     def close_tab(self, tab):
         idx = self.tabs.indexOf(tab)
@@ -343,6 +433,9 @@ class MultiBalanceApp(QMainWindow):
             tab.deleteLater()
 
     def closeEvent(self, event):
+        if not self._ok_to_close():
+            event.ignore()
+            return
         self.remember_window_state()
         for tab in self.tab_objects:
             if hasattr(tab, "save_tab_settings"):

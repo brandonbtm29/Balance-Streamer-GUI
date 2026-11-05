@@ -95,3 +95,19 @@ def _private_shortcut_state(tmp_path, monkeypatch):
 
     monkeypatch.setattr(shortcut, "STATE_FILE", str(tmp_path / "local_state.json"))
     monkeypatch.setattr(main_window, "WINDOW_STATE_PATH", str(tmp_path / "window_state.json"))
+
+
+@pytest.fixture(autouse=True)
+def _no_real_serial_ports(monkeypatch):
+    """Tests never see (or auto-connect to) the computer's real serial ports."""
+    import serial.tools.list_ports
+
+    monkeypatch.setattr(serial.tools.list_ports, "comports", lambda *a, **k: [])
+
+
+@pytest.fixture(autouse=True)
+def _no_close_prompts(monkeypatch):
+    """Closing a window or tab in a test never waits for an answer to "Close anyway?"."""
+    from balance_streamer.main_window import MultiBalanceApp
+
+    monkeypatch.setattr(MultiBalanceApp, "ask_before_closing", False)
