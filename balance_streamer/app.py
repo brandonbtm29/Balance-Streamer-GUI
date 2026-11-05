@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import QApplication
 
 import single_instance
 
-from .logs import setup_logging
+from .logs import note_clean_exit, setup_logging
 from .main_window import MultiBalanceApp
 from .paths import ICON_FILE, enter_data_dir
 from .theme import apply_theme
@@ -46,7 +46,9 @@ def main():
         discard_windows()
         raise  # multi_balance_stream.py logs it and says why the app couldn't start
 
-    sys.exit(app.exec())
+    code = app.exec()
+    note_clean_exit()
+    sys.exit(code)
 
 
 def discard_windows():

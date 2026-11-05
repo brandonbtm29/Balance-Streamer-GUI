@@ -58,7 +58,10 @@ class ShortcutPanel(QGroupBox):
     @staticmethod
     def _startup_work(_say):
         # Runs in a background thread: finding the desktop on Windows starts PowerShell.
-        desktop = shortcut.desktop_folder()
+        try:
+            desktop = shortcut.desktop_folder()
+        except shortcut.ShortcutError as e:
+            return "no-desktop", str(e)  # e.g. a server or a test machine: nothing to do
         exists = os.path.exists(shortcut.shortcut_path(desktop))
         action = shortcut.startup_action(exists, shortcut.load_state())
         if action == "refresh":
@@ -70,6 +73,9 @@ class ShortcutPanel(QGroupBox):
             log.warning("Desktop shortcut check failed: %s", result)
             return
         action, value = result
+        if action == "no-desktop":
+            log.info("No desktop shortcut: %s", value)
+            return
         if action == "refreshed":
             log.info("Refreshed desktop shortcut %s", value)
             self._status("Desktop shortcut updated for this version.")

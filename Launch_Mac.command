@@ -1,6 +1,6 @@
 #!/bin/bash
 # Double-click launcher for macOS. Starts Balance Streamer in the background and closes this
-# Terminal window. Errors after start-up go to logs/balance_streamer.log in the data folder.
+# Terminal window. Errors after start-up go to logs/<computer>/balance_streamer.log in the data folder.
 # The first time, it sets the app up: it creates this folder's own Python environment (.venv) and
 # installs everything the app needs. Setup_Mac.command does the same, to repair or reinstall.
 # For troubleshooting, Troubleshoot_Mac.command runs the app with its messages shown in Terminal.

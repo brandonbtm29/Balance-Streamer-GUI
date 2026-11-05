@@ -4,7 +4,7 @@ The code lives in the balance_streamer package; this file stays so the launchers
 build_app.py and existing shortcuts keep working.
 
 The launchers start the app without a terminal window, so the log file is set up
-first (logs/balance_streamer.log in the data folder, see balance_streamer/logs.py).
+first (logs/<computer>/balance_streamer.log in the data folder, see balance_streamer/logs.py).
 If the app can't even start (for example a missing package after a failed install),
 the reason is written to that log and shown in a message box.
 """

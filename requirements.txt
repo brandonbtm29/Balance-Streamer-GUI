@@ -1,3 +1,4 @@
-# Kept so the launchers and build_app.py keep working.
-# The dependency list itself lives in pyproject.toml.
--e .[build]
+# Used by the launchers, the setup scripts and Check for Updates.
+# The dependency list itself lives in pyproject.toml. PyInstaller (only needed to build a
+# standalone app) is not included: build_app.py installs it itself.
+-e .

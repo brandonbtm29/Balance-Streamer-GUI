@@ -42,11 +42,13 @@ def test_backup_scan_skips_damaged_rows(tab):
 def test_log_file_is_written(data_dir):
     import crash_log
     from balance_streamer import logs
+    from balance_streamer.paths import computer_folder_name
 
     crash_log._reset_for_tests()
     try:
         path = logs.setup_logging()
-        assert path == os.path.join(str(data_dir), "logs", "balance_streamer.log")
+        # Each computer has its own folder under logs/ (the data folder is shared through SyncThing).
+        assert path == os.path.join(str(data_dir), "logs", computer_folder_name(), "balance_streamer.log")
         assert logs.setup_logging() == path  # safe to call twice
         assert sys.excepthook.__module__ == "crash_log"  # the only hook: crash_log's
         logging.getLogger("balance_streamer.test").warning("hello from the test")

@@ -5,7 +5,8 @@ import sys
 def ensure_requirements():
     print("Ensuring dependencies are installed...")
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+        # The app plus PyInstaller (the "build" extra in pyproject.toml).
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", ".[build]"])
     except subprocess.CalledProcessError as e:
         print(f"Failed to install requirements: {e}")
         sys.exit(1)

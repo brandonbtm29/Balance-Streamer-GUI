@@ -11,6 +11,8 @@ e.g. "Settings" inside the data folder.
 """
 
 import os
+import platform
+import re
 import sys
 
 # The repository (or install) folder: the parent of this package.
@@ -28,6 +30,13 @@ APP_DIR = settings_location.app_folder(REPO_DIR)
 CONFIG_DIR = settings_location.resolve(APP_DIR, DATA_DIR)
 SETTINGS_FILES = ["config.json"]
 ICON_FILE = os.path.join(REPO_DIR, "assets", "Analytical Balance.ico")
+
+
+def computer_folder_name():
+    """This computer's name, safe as a folder name (e.g. "Lab-PC"). Used to keep files that
+    each computer writes, like the log, apart inside the shared (SyncThing) data folder."""
+    name = re.sub(r"[^A-Za-z0-9._-]+", "-", platform.node().split(".")[0]).strip("-.")
+    return name[:40] or "this-computer"
 
 
 def enter_data_dir():
