@@ -5,6 +5,49 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-04
+
+Fixes from a top-down check of the app and of the logs from real runs.
+
+### Fixed
+- **Long runs no longer freeze the window.** Mean, Median and Adaptive smoothing recalculated every
+  point in slow Python code after each new reading: after 8 hours of 1 s readings that took about
+  1.7 s per reading, after 24 hours 5 s, so the window froze and readings queued up. The same
+  calculations now take about 10 ms after 8 hours, and give the same numbers (checked against the
+  old code by the tests).
+- **Readings are timed when they arrive** from the balance, not when the window gets round to them,
+  so a busy window can't delay or bunch up their times (and with them the flow rates).
+- **A balance's port is no longer swapped for another one.** When a saved port wasn't on the
+  computer (COM12 on the Mac), the tab connected to the first port in the list instead (on a Mac,
+  the built-in debug console) and saved that over the real port in the shared settings. Now the tab
+  says the port isn't on this computer and waits for you to choose.
+- **Settings are no longer rewritten on every reading.** `config.json` (in SyncThing) was saved after
+  each reading of each balance; this was the likely cause of the occasional "Access is denied" when
+  saving settings on Windows.
+- Connecting a balance no longer drops its tab's saved settings from `config.json`.
+- Disconnecting a balance no longer logs "Bad file descriptor" errors: the port is now closed by the
+  thread that reads it, not from the window while a read is in progress.
+- A computer without a Desktop folder no longer writes an error report to the log at every start.
+
+### Added
+- **Each computer remembers its own port for each balance**, so the same tab can use COM12 on the
+  Windows PC and `/dev/cu.usbserial-…` on the Mac.
+- **Two tabs can't use the same port**: the second one says which tab already has it.
+- **Asks before losing readings**: closing the window while a balance is recording or has readings
+  not saved to Excel, **Clear Data**, and closing a tab with unsaved readings all ask first. The
+  readings also stay in the backup file for Recover Session.
+- When the app closes normally, it writes `exited normally` in its fatal log. On Windows, Python's
+  crash reporter also records errors Windows handles itself (such as `code 0x8001010d`); a report
+  followed by that line was not a crash.
+
+### Changed
+- **Logs are kept per computer**: `logs/<computer name>/balance_streamer.log` in the data folder.
+  Two computers writing the same log file in SyncThing made sync-conflict copies. The old
+  `logs/balance_streamer.log` is no longer written and can be deleted.
+- `requirements.txt` no longer installs PyInstaller (only needed to build a standalone app), so
+  setup and updates are quicker. `build_app.py` installs it itself.
+- The automatic tests on GitHub use the current versions of the checkout and set-up-Python actions.
+
 ## [1.4.0] - 2026-10-28
 
 ### Added
@@ -161,7 +204,8 @@ version number, tests and a proper README.
 Earlier versions were co-developed with Google Gemini in Antigravity; development continues with
 Claude (Anthropic).
 
-[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.1.1...v1.2.0
