@@ -29,6 +29,8 @@ the run is still going. It was built for column experiments in a polymer enginee
   threshold for a set time. Quick Save overwrites the last file without asking.
 - **Crash protection**: every reading is also written to a backup CSV straight away. If the computer
   crashes or loses power, Recover Session brings the run back. Backups older than 30 days are deleted.
+- **Balance guides**: Settings → Balance Guides shows, for each brand, how to set the balance up for
+  the app, calibrate it and read its error codes, plus fixes for common connection problems.
 - **Tare, linear fit and pump calibration** from the side panels.
 - **Dark or light theme**, and panels you can collapse and reorder.
 - **Always know your version**: the bottom-right corner shows the version. When a newer release is
@@ -48,13 +50,14 @@ the run is still going. It was built for column experiments in a polymer enginee
 | Balance | How it reads | Set the balance to |
 |---|---|---|
 | Mettler Toledo | Asks for a reading (MT-SICS `SI`) | 9600 baud, host mode |
-| Ohaus Adventurer | Asks for a reading (`IP`) | 9600 baud |
-| Bonvoisin | Listens to continuous output | 9600 baud, continuous print |
-| Lachoi | Listens to continuous output | 9600 baud, continuous print |
+| Ohaus Adventurer | Asks for a reading (`IP`) | 9600 baud, 8 data bits, 1 stop bit, Stable off |
+| Bonvoisin | Listens to continuous output | 9600 baud, output mode 3 (continuous), zero tracking off |
+| Lachoi | Listens to continuous output | 9600 baud (C3-4), continuous output (C5-0) |
 
 All connections use 9600 baud, 8 data bits, no parity, 1 stop bit. Other balances that print a
-number and a unit on each line usually work with the Bonvoisin or Lachoi setting. The app's
-**Settings → Help & About** page has menu paths for setting up common balances.
+number and a unit on each line usually work with the Bonvoisin or Lachoi setting. **Settings → Balance Guides** has a page for each brand: the menu steps to set it up,
+how to calibrate it, its error codes, the right cable, and a "Start here" page for common problems
+(port missing, no readings, jumpy readings, flow rate too low at slow flows).
 
 ## Install
 
@@ -217,6 +220,7 @@ The code is in the `balance_streamer` package:
 | `flow.py`, `export.py`, `recovery.py`, `tab_config.py` | The balance tab's flow maths, saving, crash recovery and saved tab settings |
 | `serial_worker.py`, `parsers.py` | Reading a balance in a background thread and decoding its lines |
 | `settings_tab.py`, `widgets.py` | The Settings tab and small shared widgets |
+| `guides.py` | Settings → Balance Guides: set-up, calibration and troubleshooting for each brand |
 | `updater.py`, `update_panel.py` | Checking GitHub and updating a git copy |
 | `shortcut.py`, `shortcut_panel.py` | Desktop icon: create it, offer it on first start, refresh it after updates |
 | `diagnostics_panel.py` | The Troubleshooting box: Open Log Folder and Copy Diagnostics |

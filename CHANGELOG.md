@@ -5,6 +5,21 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-11
+
+### Added
+- **Balance Guides** in Settings: one page per brand (Bonvoisin, Lachoi, Ohaus Adventurer, Mettler
+  Toledo, and other balances such as the MyWeigh iBalance and Adam) with the menu steps to set the
+  balance up for the app, how to calibrate it, what its error codes mean and which cable it needs.
+  The Bonvoisin page has the full setup menu (01-diu … 12-off).
+- A **Start here** page for common problems: the port isn't listed, "isn't on this computer",
+  "already in use", connected but no readings, garbled or jumpy readings, the Tare button, readings
+  that stop mid-run, and a flow rate that reads too low at slow flow rates because of the
+  balance's zero tracking.
+
+### Changed
+- Help & About now points to Balance Guides instead of listing each brand.
+
 ## [1.5.0] - 2026-11-04
 
 Fixes from a top-down check of the app and of the logs from real runs.
@@ -204,7 +219,8 @@ version number, tests and a proper README.
 Earlier versions were co-developed with Google Gemini in Antigravity; development continues with
 Claude (Anthropic).
 
-[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.2.0...v1.3.0

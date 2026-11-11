@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 import settings_location
 
 from .diagnostics_panel import DiagnosticsPanel
+from .guides import BalanceGuidesPage
 from .paths import APP_DIR, DATA_DIR, SETTINGS_FILES
 from .shortcut_panel import ShortcutPanel
 from .update_panel import UpdatePanel
@@ -303,7 +304,12 @@ class SettingsTab(QWidget):
         self.sidebar.addItem("💾 Global Settings")
         self.stack.addWidget(page_global)
 
-        # 4. Help
+        # 4. Balance Guides: set-up, calibration and troubleshooting for each brand
+        self.guides_page = BalanceGuidesPage()
+        self.sidebar.addItem("🔧 Balance Guides")
+        self.stack.addWidget(self.guides_page)
+
+        # 5. Help
         page_help = QWidget()
         l_help = QVBoxLayout(page_help)
 
@@ -312,12 +318,7 @@ class SettingsTab(QWidget):
         tb.setHtml("""
         <h2 style='color: #3498db;'>Hardware Setup</h2>
         <p>Every balance connects at <b>9600 baud, 8 data bits, no parity, 1 stop bit</b>. Pick the matching <b>Balance Brand</b> in the balance tab.</p>
-        <ul>
-            <li><b>Mettler Toledo:</b> the app asks the balance for each reading (MT-SICS command <code>SI</code>), so no continuous mode is needed. Set the host interface to 9600 baud. (<a href="https://www.mt.com/us/en/home/library/operating-instructions/laboratory-weighing/MS-TS_OI.html">Mettler Manual</a>)</li>
-            <li><b>Ohaus Adventurer:</b> the app asks for each reading (command <code>IP</code>). Set the baud rate to 9600; Auto Print can stay off. (<a href="https://dmx.ohaus.com/WorkArea/showcontent.aspx?id=4294974227">Ohaus Manual</a>)</li>
-            <li><b>Bonvoisin</b> and <b>Lachoi:</b> the app only listens, so set the balance to send continuously (often called "Continuous", "Auto-Print" or "Stream Data") at 9600 baud.</li>
-            <li><b>Other balances</b> that print a number and a unit on each line usually work with the Bonvoisin or Lachoi setting in continuous mode. For example, on Adam Equipment balances: RS-232 Menu > PC > Continuous. (<a href="https://www.adamequipment.com/media/docs/Print/EN/Manuals/Nimbus_Manual.pdf">Adam Manual</a>)</li>
-        </ul>
+        <p>How to set up, calibrate and troubleshoot each brand (Bonvoisin, Lachoi, Ohaus Adventurer, Mettler Toledo and others) is in <b>Balance Guides</b>, on the left.</p>
         <br>
         <h2 style='color: #3498db;'>Derivative Engine</h2>
         <p>This application uses a <b>Savitzky-Golay (SavGol)</b> filter to compute the flow rate (derivative) from the raw mass data. Savitzky-Golay fits a local polynomial to the data points, which smooths out high-frequency noise while calculating a highly accurate derivative.</p>
@@ -337,6 +338,11 @@ class SettingsTab(QWidget):
 
         self.sidebar.currentRowChanged.connect(self.stack.setCurrentIndex)
         self.sidebar.setCurrentRow(0)
+
+    def show_guide(self, brand):
+        """Open Balance Guides at this brand's guide ("Start here" for an unknown brand)."""
+        self.sidebar.setCurrentRow(self.stack.indexOf(self.guides_page))
+        return self.guides_page.show_guide(brand)
 
     def toggle_button_text(self, checked):
         self.app_ref.config["show_button_text"] = checked
