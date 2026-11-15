@@ -5,6 +5,12 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ## [Unreleased]
 
+### Changed
+- The data folder is now the app's own SyncThing folder, `~/SyncThing/Balance Streamer Application`, instead of
+  `Balance Streamer Application` inside the shared `~/SyncThing/UAkron Playground` folder (retired in November 2026).
+  A computer that has only the old folder keeps using it until SyncThing brings the new one.
+  `UAKRON_DATA_DIR` (the folder that holds the app's data folder) now defaults to `~/SyncThing`.
+
 ## [1.6.0] - 2026-11-11
 
 ### Added

@@ -155,7 +155,7 @@ The buttons across the top of each balance tab, left to right (hover over one to
 
 The app keeps its code and its data apart:
 
-- **Data folder**: `~/SyncThing/UAkron Playground/Balance Streamer Application/` by default.
+- **Data folder**: `~/SyncThing/Balance Streamer Application/` by default.
   The app works inside this folder, so exports land in `Data/` and backups in `Data Backups/`.
   Set the `UAKRON_APP_DATA_DIR` environment variable to use another folder (or `UAKRON_DATA_DIR`
   to move the parent folder).

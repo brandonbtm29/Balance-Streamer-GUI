@@ -21,10 +21,24 @@ if REPO_DIR not in sys.path:
     sys.path.insert(0, REPO_DIR)
 import settings_location  # noqa: E402  (shared helper at the repository root)
 
-DATA_DIR = os.environ.get("UAKRON_APP_DATA_DIR") or os.path.join(
-    os.environ.get("UAKRON_DATA_DIR")
-    or os.path.join(os.path.expanduser("~"), "SyncThing", "UAkron Playground"),
-    "Balance Streamer Application",
+DATA_FOLDER_NAME = "Balance Streamer Application"
+OLD_SYNC_FOLDER = "UAkron Playground"  # the SyncThing folder all the lab apps shared before Nov 2026
+
+
+def default_data_dir(home=None):
+    """``~/SyncThing/Balance Streamer Application``: the app's own SyncThing folder. A computer that doesn't have it
+    yet but still has the data in the old shared folder (``~/SyncThing/UAkron Playground/...``)
+    keeps using that one until SyncThing brings the new one."""
+    sync = os.path.join(home or os.path.expanduser("~"), "SyncThing")
+    new = os.path.join(sync, DATA_FOLDER_NAME)
+    old = os.path.join(sync, OLD_SYNC_FOLDER, DATA_FOLDER_NAME)
+    return old if not os.path.isdir(new) and os.path.isdir(old) else new
+
+
+DATA_DIR = os.environ.get("UAKRON_APP_DATA_DIR") or (
+    os.path.join(os.environ["UAKRON_DATA_DIR"], DATA_FOLDER_NAME)
+    if os.environ.get("UAKRON_DATA_DIR")
+    else default_data_dir()
 )
 APP_DIR = settings_location.app_folder(REPO_DIR)
 CONFIG_DIR = settings_location.resolve(APP_DIR, DATA_DIR)
