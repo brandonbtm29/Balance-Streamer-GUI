@@ -5,6 +5,21 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ## [Unreleased]
 
+### Added
+- **Detect** button next to the Brand box: finds out which balance is on the chosen port. It listens
+  first without sending anything, then asks only for a reading or the model (Mettler Toledo `SI` and
+  `I2`, Ohaus `IP` and `P`), never tare or calibration, and tries 2400, 4800, 19200 and 1200 baud if
+  nothing answers at 9600. Mettler Toledo and Ohaus are recognised for certain; Bonvoisin and Lachoi
+  are a best guess from the shape of their lines. A balance found at another speed is told to switch
+  to 9600 baud, and an Ohaus that answers only `P` (the AR series) is reported as not readable yet.
+  Shift-click records 10 seconds of what the balance sends. Everything a balance sent during Detect
+  is saved in `Balance samples/<computer>/` in the data folder, to tune the rules with real balances.
+- **Cable memory**: connecting a tab remembers its USB-to-serial cable (serial number and USB IDs) in
+  the shared settings. At start-up the tab connects to the port that cable is on now, even if it moved
+  to another USB socket or computer, and won't use a saved port that now has another balance's cable.
+  Cables without a serial number, cables shared by two tabs and serial numbers seen on two ports at
+  once are ignored, so nothing changes for them.
+
 ### Changed
 - The data folder is now the app's own SyncThing folder, `~/SyncThing/Balance Streamer Application`, instead of
   `Balance Streamer Application` inside the shared `~/SyncThing/UAkron Playground` folder (retired in November 2026).
