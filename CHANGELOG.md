@@ -19,12 +19,18 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
   to another USB socket or computer, and won't use a saved port that now has another balance's cable.
   Cables without a serial number, cables shared by two tabs and serial numbers seen on two ports at
   once are ignored, so nothing changes for them.
+- **Data Folder** box in Settings → Application Settings: where exports, backups and logs go, an
+  **Open Data Folder** button, and how to share the folder between computers with Syncthing.
 
 ### Changed
-- The data folder is now the app's own SyncThing folder, `~/SyncThing/Balance Streamer Application`, instead of
-  `Balance Streamer Application` inside the shared `~/SyncThing/UAkron Playground` folder (retired in November 2026).
-  A computer that has only the old folder keeps using it until SyncThing brings the new one.
-  `UAKRON_DATA_DIR` (the folder that holds the app's data folder) now defaults to `~/SyncThing`.
+- **Where the data goes.** A computer that has `~/SyncThing/Balance Streamer Application` uses it: the
+  app's own Syncthing folder, instead of `Balance Streamer Application` inside the shared
+  `~/SyncThing/UAkron Playground` folder (retired in November 2026). A computer that has only the old
+  folder keeps using it until Syncthing brings the new one. **Every other computer now uses
+  `Documents/Balance Streamer`** instead of creating a `SyncThing` folder in the home folder (on
+  Windows, the real Documents folder, even if it was moved). To share the data with Syncthing, share a
+  folder named `Balance Streamer Application` inside `~/SyncThing` on each computer; the app uses it
+  from its next start. `UAKRON_APP_DATA_DIR` and `UAKRON_DATA_DIR` still override this.
 
 ## [1.6.0] - 2026-11-11
 

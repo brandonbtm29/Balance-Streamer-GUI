@@ -165,8 +165,14 @@ The buttons across the top of each balance tab, left to right (hover over one to
 
 The app keeps its code and its data apart:
 
-- **Data folder**: `~/SyncThing/Balance Streamer Application/` by default.
-  The app works inside this folder, so exports land in `Data/` and backups in `Data Backups/`.
+- **Data folder**: `Documents/Balance Streamer/` by default. The app works inside this folder, so
+  exports land in `Data/` and backups in `Data Backups/`. Settings → Application Settings → Data Folder
+  shows where it is and opens it.
+  **Sharing it between computers with [Syncthing](https://syncthing.net/):** share a folder named
+  `Balance Streamer Application` inside `SyncThing` in your home folder
+  (`~/SyncThing/Balance Streamer Application`, on Windows `C:\Users\<you>\SyncThing\...`) on each
+  computer. When that folder exists the app uses it instead, from its next start; move anything you
+  want to keep from `Documents/Balance Streamer` into it.
   Set the `UAKRON_APP_DATA_DIR` environment variable to use another folder (or `UAKRON_DATA_DIR`
   to move the parent folder).
 - **Settings** (`config.json`): in the app's own folder by default. In
