@@ -31,6 +31,15 @@ the run is still going. It was built for column experiments in a polymer enginee
   crashes or loses power, Recover Session brings the run back. Backups older than 30 days are deleted.
 - **Balance guides**: Settings → Balance Guides shows, for each brand, how to set the balance up for
   the app, calibrate it and read its error codes, plus fixes for common connection problems.
+- **Detect**: not sure which balance is on a port? Choose the port and press **Detect** next to the
+  Brand box. It listens first, then only asks for a reading (it never tares or calibrates), tries
+  other speeds if nothing answers, and offers the brand it found. Mettler Toledo and Ohaus are
+  recognised for certain; Bonvoisin, Lachoi and other balances that send readings on their own are a
+  best guess (the app reads them the same way). **Shift-click** records 10 seconds of what the balance
+  sends. What it heard is saved in `Balance samples/<computer>/` in the data folder.
+- **Cable memory**: each tab remembers its USB-to-serial cable by the cable's serial number, so the
+  balance is found again after its cable moves to another USB socket or another computer. Cables
+  without a serial number (many CH340 and Prolific ones) keep using the saved port.
 - **Tare, linear fit and pump calibration** from the side panels.
 - **Dark or light theme**, and panels you can collapse and reorder.
 - **Always know your version**: the bottom-right corner shows the version. When a newer release is
@@ -134,7 +143,8 @@ Version 1.0.0 has no update button: update it once by running `git pull` in the 
    then **Connect**. Each computer remembers the port it used for each balance, so the same tab can
    be COM12 on Windows and `/dev/cu.usbserial-…` on a Mac. If a balance's port isn't on this
    computer, the tab says so and waits for you to pick one; it never connects to another port by
-   itself. Two tabs can't use the same port.
+   itself, except where the balance's own cable is now (cable memory). Two tabs can't use the same
+   port. Not sure of the brand? Choose the port and press **Detect**.
 3. Press **▶** to start recording. Press it again to stop.
 4. Press the Excel button to save, or set up **Auto-Save Settings** so it saves for you.
 5. Add a tab for each extra balance with **Tab Management → Add Tab**.
@@ -155,8 +165,14 @@ The buttons across the top of each balance tab, left to right (hover over one to
 
 The app keeps its code and its data apart:
 
-- **Data folder**: `~/SyncThing/Balance Streamer Application/` by default.
-  The app works inside this folder, so exports land in `Data/` and backups in `Data Backups/`.
+- **Data folder**: `Documents/Balance Streamer/` by default. The app works inside this folder, so
+  exports land in `Data/` and backups in `Data Backups/`. Settings → Application Settings → Data Folder
+  shows where it is and opens it.
+  **Sharing it between computers with [Syncthing](https://syncthing.net/):** share a folder named
+  `Balance Streamer Application` inside `SyncThing` in your home folder
+  (`~/SyncThing/Balance Streamer Application`, on Windows `C:\Users\<you>\SyncThing\...`) on each
+  computer. When that folder exists the app uses it instead, from its next start; move anything you
+  want to keep from `Documents/Balance Streamer` into it.
   Set the `UAKRON_APP_DATA_DIR` environment variable to use another folder (or `UAKRON_DATA_DIR`
   to move the parent folder).
 - **Settings** (`config.json`): in the app's own folder by default. In
@@ -219,6 +235,7 @@ The code is in the `balance_streamer` package:
 | `balance_tab.py` | One balance tab (layout, connection, recording, chart and table) |
 | `flow.py`, `export.py`, `recovery.py`, `tab_config.py` | The balance tab's flow maths, saving, crash recovery and saved tab settings |
 | `serial_worker.py`, `parsers.py` | Reading a balance in a background thread and decoding its lines |
+| `detect.py`, `cables.py` | The Detect button (which balance is on a port) and cable memory (finding a balance's cable again) |
 | `settings_tab.py`, `widgets.py` | The Settings tab and small shared widgets |
 | `guides.py` | Settings → Balance Guides: set-up, calibration and troubleshooting for each brand |
 | `updater.py`, `update_panel.py` | Checking GitHub and updating a git copy |

@@ -1,14 +1,20 @@
 """The Settings tab: application settings, panel order, global save settings and help."""
 
+import logging
+import os
+
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QFormLayout,
     QGridLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QStackedWidget,
@@ -19,11 +25,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+import diagnostics
 import settings_location
 
 from .diagnostics_panel import DiagnosticsPanel
 from .guides import BalanceGuidesPage
-from .paths import APP_DIR, DATA_DIR, SETTINGS_FILES
+from .paths import APP_DIR, DATA_DIR, SETTINGS_FILES, SYNC_DATA_DIR
 from .shortcut_panel import ShortcutPanel
 from .update_panel import UpdatePanel
 from .widgets import CollapsibleBox, ReorderPanelsWidget
@@ -251,6 +258,7 @@ class SettingsTab(QWidget):
         self.chk_dark_mode.clicked.connect(self.toggle_theme)
         l_app.addWidget(self.chk_dark_mode)
 
+        l_app.addWidget(self._data_folder_box())
         l_app.addWidget(
             settings_location.settings_folder_box(
                 APP_DIR,
@@ -338,6 +346,38 @@ class SettingsTab(QWidget):
 
         self.sidebar.currentRowChanged.connect(self.stack.setCurrentIndex)
         self.sidebar.setCurrentRow(0)
+
+    def _data_folder_box(self):
+        """Where exports, backups and logs go, and how to share them with Syncthing (paths.py)."""
+        box = QGroupBox("Data Folder")
+        lay = QVBoxLayout(box)
+        self.lbl_data_folder = QLabel(DATA_DIR)
+        self.lbl_data_folder.setWordWrap(True)
+        self.lbl_data_folder.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        lay.addWidget(self.lbl_data_folder)
+        if os.path.normcase(DATA_DIR) == os.path.normcase(SYNC_DATA_DIR):
+            note = "Exports, backups and logs go here. Syncthing shares this folder between computers."
+        else:
+            note = (
+                "Exports, backups and logs go here. <b>To share them between computers with Syncthing</b>, "
+                "share a folder named <b>Balance Streamer Application</b> inside <b>SyncThing</b> in your "
+                f"home folder (<code>{SYNC_DATA_DIR}</code>) on each computer. The app uses it from its next "
+                "start; move anything you want to keep from this folder into it."
+            )
+        self.lbl_data_note = QLabel(note)
+        self.lbl_data_note.setWordWrap(True)
+        lay.addWidget(self.lbl_data_note)
+        btn = QPushButton("Open Data Folder")
+        btn.clicked.connect(self.open_data_folder)
+        lay.addWidget(btn, alignment=Qt.AlignmentFlag.AlignLeft)
+        return box
+
+    def open_data_folder(self):
+        try:
+            diagnostics.open_folder(DATA_DIR)
+        except OSError as e:
+            logging.getLogger(__name__).warning("Couldn't open the data folder: %s", e)
+            QMessageBox.warning(self, "Open Data Folder", f"Couldn't open the data folder.\n\n{e}")
 
     def show_guide(self, brand):
         """Open Balance Guides at this brand's guide ("Start here" for an unknown brand)."""

@@ -4,12 +4,15 @@ import csv
 import datetime
 import logging
 import os
+import threading
 import time
 
 import matplotlib
+import serial
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QCheckBox,
     QComboBox,
     QFileDialog,
@@ -20,6 +23,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
+    QProgressDialog,
     QPushButton,
     QScrollArea,
     QSplitter,
@@ -36,11 +40,13 @@ import scipy.signal
 import scipy.stats
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 
+from .detect import DetectionCancelled, Detector, save_sample
 from .export import ExportMixin
 from .flow import FlowMixin
 from .recovery import RecoveryMixin
 from .serial_worker import SerialWorker, available_ports
 from .tab_config import TabConfigMixin
+from .update_panel import _Task
 from .widgets import CollapsibleBox
 
 log = logging.getLogger(__name__)
@@ -54,6 +60,8 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
         self.app = app
         self.tab_name = tab_name
         self.serial_thread = None
+        self._detect_task = None  # Detect running in the background (detect.py)
+        self._detect_progress = None
 
         # Data tracking
         self.times_sec = []
@@ -399,7 +407,17 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
         l_conn.addWidget(QLabel("Balance Brand:"))
         self.combo_brand = QComboBox()
         self.combo_brand.addItems(["Bonvoisin", "Mettler Toledo", "Ohaus Adventurer", "Lachoi"])
-        l_conn.addWidget(self.combo_brand)
+        row_brand = QHBoxLayout()
+        row_brand.addWidget(self.combo_brand, 1)
+        self.btn_detect = QPushButton("Detect")
+        self.btn_detect.setToolTip(
+            "Find out which kind of balance is on the chosen port. It listens first, then only asks "
+            "for a reading: it never tares or calibrates.\n"
+            f"Shift-click: record {self.CAPTURE_SECONDS} s of what the balance sends, for troubleshooting."
+        )
+        self.btn_detect.clicked.connect(self.request_detect)
+        row_brand.addWidget(self.btn_detect)
+        l_conn.addLayout(row_brand)
 
         l_conn.addWidget(QLabel("COM Port:"))
         self.combo_com = QComboBox()
@@ -629,13 +647,21 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
         items = [self.combo_com.itemText(i) for i in range(self.combo_com.count())]
         return [p for p in items if p and p != "No Ports Found"]
 
-    def show_missing_port(self, port):
-        """The saved port isn't on this computer: pick nothing and say so (no auto-connect)."""
+    def show_missing_port(self, port, other_cable=False):
+        """The saved port isn't on this computer, or now has another balance's cable on it: pick
+        nothing and say so (no auto-connect)."""
         self.combo_com.setCurrentIndex(-1)
-        self.combo_com.setPlaceholderText(f"{port} isn't here: choose a port")
-        self.lbl_status.setText(
-            f"Status: {port} isn't on this computer. Choose the balance's port, then Connect."
-        )
+        if other_cable:
+            self.combo_com.setPlaceholderText(f"{port} has another cable: choose a port")
+            self.lbl_status.setText(
+                f"Status: {port} now has a different cable on it, not this balance's. Choose the "
+                "balance's port, then Connect."
+            )
+        else:
+            self.combo_com.setPlaceholderText(f"{port} isn't here: choose a port")
+            self.lbl_status.setText(
+                f"Status: {port} isn't on this computer. Choose the balance's port, then Connect."
+            )
         self.lbl_status.setStyleSheet("color: #e67e22; font-weight: bold;")
 
     def toggle_flow_axis(self):
@@ -697,6 +723,127 @@ class BalanceTab(FlowMixin, ExportMixin, RecoveryMixin, TabConfigMixin, QWidget)
 
         if self.app:
             self.app.save_connection(self.tab_name, brand, port)
+
+    # --- Detect: which balance is on this port? (detect.py) --------------------------------------
+
+    CAPTURE_SECONDS = 10
+
+    def request_detect(self):
+        """The Detect button. With Shift held, record what the balance sends instead."""
+        shift = QApplication.keyboardModifiers() & Qt.KeyboardModifier.ShiftModifier
+        self.detect_brand(capture=bool(shift))
+
+    def detect_brand(self, capture=False):
+        """Check the chosen port in the background, then offer the brand found."""
+        port = self.combo_com.currentText()
+        if not port or port == "No Ports Found":
+            QMessageBox.information(self, "Detect", "Choose the balance's port first.")
+            return
+        if self.recording:
+            QMessageBox.warning(self, "Detect", "Stop recording first: Detect needs the port to itself.")
+            return
+        other = self.app.tab_using_port(port, exclude=self) if self.app else None
+        if other is not None:
+            QMessageBox.warning(
+                self, "Detect", f"{port} is in use by the tab {other.tab_name!r}. Disconnect that tab first."
+            )
+            return
+        was_connected = bool(self.serial_thread and self.serial_thread.isRunning())
+        if was_connected:
+            self.disconnect_serial()
+
+        stop = threading.Event()
+        detector = Detector(port, cancelled=stop.is_set)
+        seconds = self.CAPTURE_SECONDS
+
+        def job(progress):
+            try:
+                return detector.capture(seconds, progress) if capture else detector.run(progress)
+            except DetectionCancelled:
+                return None
+            except (serial.SerialException, OSError) as e:
+                return OSError(f"Couldn't open {port}: {e}")
+
+        self.btn_detect.setEnabled(False)
+        self.btn_connect.setEnabled(False)
+        self.lbl_status.setText(f"Status: Detecting on {port}...")
+        self.lbl_status.setStyleSheet("color: #3498db; font-weight: bold;")
+        progress = QProgressDialog("Detect: starting...", "Cancel", 0, 0, self)
+        progress.setWindowTitle("Detect balance")
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.canceled.connect(stop.set)
+        self._detect_progress = progress
+        task = _Task(job, self)
+        task.progress.connect(progress.setLabelText)
+        task.done.connect(lambda result: self._detection_done(result, port, was_connected))
+        self._detect_task = task
+        task.start()
+        progress.show()
+
+    def _detection_done(self, result, port, was_connected):
+        """Back on the GUI thread: show what Detect found and act on the answer."""
+        if self._detect_progress is not None:
+            self._detect_progress.reset()
+            self._detect_progress.close()
+            self._detect_progress = None
+        self._detect_task = None
+        self.btn_detect.setEnabled(True)
+        self.btn_connect.setEnabled(True)
+        self.lbl_status.setText("Status: Disconnected")
+        self.lbl_status.setStyleSheet("color: gray;")
+        choice = "close"
+        if isinstance(result, Exception):
+            QMessageBox.warning(self, "Detect", f"Couldn't check {port}:\n{result}")
+        elif result is not None:  # None: cancelled
+            sample = None
+            if result.heard_anything:
+                try:
+                    sample = save_sample(result, port)
+                except OSError:
+                    log.warning("Couldn't save what %s sent", port, exc_info=True)
+            choice = self._detection_choice(result, port, sample)
+        self._apply_detection(result, choice, was_connected)
+
+    def _detection_choice(self, result, port, sample_path):
+        """Show what Detect found. "use", "guide" or "close"."""
+        box = QMessageBox(self)
+        box.setWindowTitle("Detect balance")
+        if result.brand:
+            box.setIcon(QMessageBox.Icon.Information)
+            box.setText(f"<b>{port}: {result.brand}</b> ({'certain' if result.certain else 'best guess'})")
+        else:
+            box.setIcon(QMessageBox.Icon.Warning)
+            box.setText(f"<b>{port}: no brand the app can use as it is</b>")
+        details = [
+            result.summary,
+            "Sent: " + ("; ".join(result.sent) if result.sent else "nothing, it only listened."),
+        ]
+        if sample_path:
+            details.append(f"What the balance sent is saved in {sample_path}")
+        box.setInformativeText("\n\n".join(details))
+        use = None
+        if result.brand:
+            use = box.addButton(f"Use {result.brand} and Connect", QMessageBox.ButtonRole.AcceptRole)
+        guide = box.addButton(f"Open Guide: {result.guide}", QMessageBox.ButtonRole.ActionRole)
+        close = box.addButton(QMessageBox.StandardButton.Close)
+        box.setDefaultButton(use or close)
+        box.exec()
+        clicked = box.clickedButton()
+        if use is not None and clicked is use:
+            return "use"
+        return "guide" if clicked is guide else "close"
+
+    def _apply_detection(self, result, choice, was_connected):
+        if choice == "use" and result is not None and result.brand:
+            self.combo_brand.setCurrentText(result.brand)
+            self.connect_serial()
+            return
+        if choice == "guide" and result is not None and self.app is not None:
+            self.app.tabs.setCurrentWidget(self.app.settings_tab)
+            self.app.settings_tab.show_guide(result.guide)
+        if was_connected:
+            self.connect_serial(auto=True)  # back as it was before Detect
 
     def disconnect_serial(self):
         if self.serial_thread:

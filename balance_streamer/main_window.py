@@ -20,7 +20,9 @@ from PyQt6.QtWidgets import (
 import single_instance
 
 from .balance_tab import BalanceTab
+from .cables import cable_of, holds_other_cable, port_with_cable, usable_cable
 from .paths import APP_DIR, CONFIG_DIR
+from .serial_worker import port_details
 from .settings_tab import SettingsTab
 from .theme import apply_theme
 from .update_panel import VersionStatus
@@ -47,16 +49,25 @@ def load_window_state():
     return data if isinstance(data, dict) else {}
 
 
-def pick_port(here, shared, available):
+def pick_port(here, shared, available, cable=None, details=None):
     """Which port a saved balance should use on this computer, or None to wait for the user.
 
     ``here`` is the port it last used on this computer, ``shared`` the one in the shared
     settings (possibly saved on the other computer). A port that isn't on this computer is
     never swapped for another one: that used to connect the tab to whatever port came first
     (on a Mac, the built-in debug console) and save that port over the real one.
+
+    ``cable`` is the balance's remembered USB-to-serial cable (cables.py) and ``details`` this
+    computer's ports with their cables. The port that cable is on now comes first, and a saved
+    port that now has a different cable on it is not used.
     """
+    details = details or {}
+    if cable:
+        found = port_with_cable(cable, details)
+        if found and found in available:
+            return found
     for port in (here, shared):
-        if port and port in available:
+        if port and port in available and not (cable and holds_other_cable(port, cable, details)):
             return port
     return None
 
@@ -334,6 +345,12 @@ class MultiBalanceApp(QMainWindow):
         entry = known.get(name) if isinstance(known.get(name), dict) else {}
         # Update the entry rather than replace it: replacing it dropped the tab's saved settings.
         entry.update({"brand": brand, "port": port, "unsaved": False})
+        # Remember the cable too, so the balance is found again if its cable moves (cables.py).
+        cable = cable_of(port_details().get(port))
+        if cable:
+            entry["cable"] = cable
+        else:
+            entry.pop("cable", None)  # no serial number on this cable: nothing to recognise
         known[name] = entry
         self.save_config()
         self.remember_port_here(name, port)
@@ -368,11 +385,18 @@ class MultiBalanceApp(QMainWindow):
         tab = BalanceTab(app=self, tab_name=unique_name)
         tab.combo_brand.setCurrentText(brand)
         saved = self.port_here(name) or port
-        port = pick_port(self.port_here(name), port, tab.port_choices())
+        details = port_details()
+        cable = usable_cable(name, self.config.get("known_balances", {}))
+        port = pick_port(self.port_here(name), port, tab.port_choices(), cable, details)
         if port:
             tab.combo_com.setCurrentText(port)
+            if saved and port != saved and cable and port == port_with_cable(cable, details):
+                log.info("%s: its cable is on %s now, not %s", unique_name, port, saved)
         elif saved:
-            tab.show_missing_port(saved)
+            other_cable = (
+                bool(cable) and saved in tab.port_choices() and holds_other_cable(saved, cable, details)
+            )
+            tab.show_missing_port(saved, other_cable=other_cable)
 
         tab.load_tab_settings()
 

@@ -17,6 +17,11 @@ def available_ports():
     return [p.device for p in serial.tools.list_ports.comports()]
 
 
+def port_details():
+    """{port name: pyserial's information about it}: the cable's maker, USB IDs and serial number."""
+    return {p.device: p for p in serial.tools.list_ports.comports()}
+
+
 class SerialWorker(QThread):
     # value, unit, and the time.time() at which the line arrived. The time is taken here, in
     # the reading thread, so a busy window can't delay or bunch up the time stamps.

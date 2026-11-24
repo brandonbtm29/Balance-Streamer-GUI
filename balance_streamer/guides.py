@@ -30,6 +30,9 @@ COMMON = f"""
 <h2>Start here: common problems</h2>
 <p>Every balance must be set to {_PORT}. In each balance tab, pick the matching <b>Brand</b>,
 choose the port, then press <b>Connect</b>. The tab for each brand has its own guide.</p>
+<p>Not sure which brand it is, or whether it's set right? Choose the port and press <b>Detect</b>
+next to the Brand box. It listens first and then only asks for a reading (never tare or
+calibration), and it says if the balance is set to another speed than 9600 baud.</p>
 
 <h3>The balance's port isn't in the list</h3>
 <ul>
