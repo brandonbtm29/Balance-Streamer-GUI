@@ -5,6 +5,8 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-24
+
 ### Added
 - **Detect** button next to the Brand box: finds out which balance is on the chosen port. It listens
   first without sending anything, then asks only for a reading or the model (Mettler Toledo `SI` and
@@ -246,7 +248,8 @@ version number, tests and a proper README.
 Earlier versions were co-developed with Google Gemini in Antigravity; development continues with
 Claude (Anthropic).
 
-[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.3.0...v1.4.0

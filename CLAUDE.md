@@ -51,7 +51,7 @@ PyQt6 desktop app that streams several lab balances at once over RS-232/USB seri
 - 28 Oct 2026: v1.4.0 added first-run setup in the launchers, the shared crash log, one copy at a time, diagnostics, and per-computer window layout.
 - 4 Nov 2026: v1.5.0 (from a top-down check): numpy flow smoothing (long runs no longer freeze), readings timed in the serial thread, per-computer ports with no silent port substitution, no config.json write per reading, close/clear prompts for unsaved readings, per-computer logs, no PyInstaller in requirements.txt.
 - 11 Nov 2026: v1.6.0 added Settings → Balance Guides (set-up, calibration, error codes and troubleshooting per brand).
-- 21 Nov 2026 (not released yet, branch `detect-balance`): Detect button and cable memory.
+- 24 Nov 2026: v1.7.0 added Detect (which balance is on a port, `detect.py`) and cable memory (`cables.py`), moved the data folder to the app's own Syncthing folder, and made `Documents/Balance Streamer` the default on computers without it (Settings → Data Folder).
 
 ## Where code and data live
 - **Code** (this repo) is cloned outside SyncThing: `%USERPROFILE%\GitHub Projects\UAkron\Balance-Streamer-GUI` on Windows, `~/GitHub Projects/UAkron/Balance-Streamer-GUI` on the Mac. It syncs through GitHub only.
