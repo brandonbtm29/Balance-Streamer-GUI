@@ -9,3 +9,4 @@
 *.png      binary
 *.app/Contents/MacOS/launch  text eol=lf
 *.icns     binary
+.github/allowed_signers  text eol=lf

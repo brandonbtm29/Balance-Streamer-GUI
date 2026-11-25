@@ -14,8 +14,10 @@ files to its own data and settings folders. It stores no passwords or keys.
 It goes online only to check for updates, when it starts (this can be turned off in Settings) and
 when you press **Check for Updates**: it asks GitHub's public API for this repository's latest
 release (no account, nothing about you is sent), and if you choose to update,
-it runs `git fetch` from the folder's own `origin` remote, moves to the release tag
-(fast-forward only) and runs `pip install -r requirements.txt` with the app's Python.
+it runs `git fetch` from the folder's own `origin` remote, checks that the release tag's commit is
+signed with a key in `.github/allowed_signers` (this computer's own copy, so a release can't add its
+own key), moves to the tag (fast-forward only) and runs `pip install -r requirements.txt` with the
+app's Python. git and pip run without any `GIT_*` settings from the environment.
 
 Things that would count as security issues:
 

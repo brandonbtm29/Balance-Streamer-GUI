@@ -130,7 +130,9 @@ starts**.
 This works when the app was installed with `git clone` (step 1 above) and needs git on the computer.
 It only moves to published releases, never to unfinished work, and it won't overwrite files you
 changed in the app's folder. If installing the new requirements fails, the app goes back to the
-version you had. Copies downloaded as a ZIP, and standalone builds, show a link to the
+version you had. It installs only releases signed with one of the keys in `.github/allowed_signers`,
+checked against the copy this computer already has (so a new release can't add its own key); if a
+release isn't, the update window says why and the app stays on the version it has. Copies downloaded as a ZIP, and standalone builds, show a link to the
 [release page](https://github.com/brandonbtm29/Balance-Streamer-GUI/releases/latest) instead.
 
 Version 1.0.0 has no update button: update it once by running `git pull` in the app's folder, then

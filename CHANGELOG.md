@@ -5,6 +5,17 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-11-25
+
+### Changed
+- **Updates install only signed releases.** Before moving to a release, the updater checks that its
+  commit is signed with one of the keys in `.github/allowed_signers`, using the copy this computer
+  already has, so a new release can't add its own key. If it isn't (unsigned, signed by a key that isn't
+  listed, or the signature can't be checked), the update window says why and the app stays on the
+  version it has. Checks start with this version: the update *to* 1.8.0 is still installed the old way.
+- git and pip, run by the updater, no longer inherit `GIT_*` settings from the environment
+  (`GIT_CONFIG_*` can make git run commands), and git never waits for a password.
+
 ## [1.7.0] - 2026-11-24
 
 ### Added
@@ -248,7 +259,8 @@ version number, tests and a proper README.
 Earlier versions were co-developed with Google Gemini in Antigravity; development continues with
 Claude (Anthropic).
 
-[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.4.0...v1.5.0
