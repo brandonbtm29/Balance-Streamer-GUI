@@ -225,6 +225,24 @@ def test_only_good_signatures_pass(tmp_path, monkeypatch, letter, code, words):
     assert updater.release_signed(str(tmp_path), "abc123") == ""
 
 
+def test_windows_prefers_gits_own_ssh_keygen(tmp_path, monkeypatch):
+    """System32's ssh-keygen can hang on -Y verify in an SSH session, so Git's copy comes first."""
+    git_dir = tmp_path / "Git"
+    (git_dir / "cmd").mkdir(parents=True)
+    (git_dir / "cmd" / "git.exe").write_text("")
+    (git_dir / "usr" / "bin").mkdir(parents=True)
+    gits = git_dir / "usr" / "bin" / "ssh-keygen.exe"
+    gits.write_text("")
+    on_path = str(tmp_path / "OpenSSH" / "ssh-keygen.exe")
+    found = {"git": str(git_dir / "cmd" / "git.exe"), "ssh-keygen": on_path}
+    monkeypatch.setattr(updater.shutil, "which", lambda name: found.get(name))
+    monkeypatch.setenv("ProgramFiles", str(tmp_path / "nowhere"))
+    assert os.path.normcase(updater._ssh_keygen(windows=True)) == os.path.normcase(str(gits))
+    gits.unlink()
+    assert updater._ssh_keygen(windows=True) == on_path
+    assert updater._ssh_keygen(windows=False) == on_path
+
+
 def test_no_list_or_no_ssh_keygen_means_no_update(tmp_path, monkeypatch):
     def fake_git(root, *args, timeout=120):
         raise AssertionError("git shouldn't run")

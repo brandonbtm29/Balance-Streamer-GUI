@@ -5,6 +5,13 @@ new features bump the middle number (1.0.0 → 1.1.0) and fixes bump the last (1
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-11-27
+
+### Fixed
+- On Windows, the update's signature is checked with Git's own `ssh-keygen` first. Windows' built-in
+  one (`System32\OpenSSH`) can hang when checking a signature in an SSH session (seen on BMAX), which
+  would hold an update for a minute and then refuse it.
+
 ## [1.8.0] - 2026-11-25
 
 ### Changed
@@ -259,7 +266,8 @@ version number, tests and a proper README.
 Earlier versions were co-developed with Google Gemini in Antigravity; development continues with
 Claude (Anthropic).
 
-[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.8.1...HEAD
+[1.8.1]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/brandonbtm29/Balance-Streamer-GUI/compare/v1.5.0...v1.6.0
